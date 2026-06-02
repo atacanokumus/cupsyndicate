@@ -708,9 +708,12 @@ export default function RedesignedPredictionWizard() {
       return;
     }
     setSquadJoinLoading(true);
-    const dummyUid = isUserLoggedIn ? (userName.includes('Google') ? 'dummy_google_123' : 'dummy_apple_123') : 'guest_user';
+    if (!userUid) {
+      alert("Lütfen önce giriş yapın.");
+      return;
+    }
     try {
-      const res = await joinSquadWithTransaction(dummyUid, 'comp_dummy', squadInput.toUpperCase().trim());
+      const res = await joinSquadWithTransaction(userUid, 'comp_dummy', squadInput.toUpperCase().trim());
       alert(res.message);
       if (res.success) {
         setCurrentSquadId(squadInput.toUpperCase().trim());
@@ -733,9 +736,12 @@ export default function RedesignedPredictionWizard() {
       alert("Lütfen şirket adı ve kadro adını girin.");
       return;
     }
-    const dummyUid = isUserLoggedIn ? (userName.includes('Google') ? 'dummy_google_123' : 'dummy_apple_123') : 'guest_user';
+    if (!userUid) {
+      alert("Lütfen önce giriş yapın.");
+      return;
+    }
     try {
-      const res = await createSquad(dummyUid, newCompanyName.trim(), newSquadName.trim());
+      const res = await createSquad(userUid, newCompanyName.trim(), newSquadName.trim());
       alert(res.message);
       if (res.success) {
         setCurrentSquadId(res.squadId);

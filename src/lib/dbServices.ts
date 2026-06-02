@@ -152,10 +152,10 @@ export const joinSquadWithTransaction = async (
       transaction.update(squadRef, { memberUids: updatedMembers });
 
       // 4. Kullanıcı profilindeki companyId ve squadId değerlerini güncelle
-      transaction.update(userRef, {
+      transaction.set(userRef, {
         companyId: companyId,
         squadId: squadId
-      });
+      }, { merge: true });
 
       return { success: true, message: "Kadroya başarıyla katıldınız!" };
     });
@@ -233,10 +233,10 @@ export const createSquad = async (
       });
 
       // Kullanıcı belgesini güncelle
-      transaction.update(userRef, {
+      transaction.set(userRef, {
         companyId,
         squadId
-      });
+      }, { merge: true });
     });
 
     return {
