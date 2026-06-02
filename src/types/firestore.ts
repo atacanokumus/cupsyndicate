@@ -79,7 +79,8 @@ export interface Squad {
   companyId: string;           // Bağlı olduğu şirket ID'si
   name: string;                // Squad adı (Örn: "Trendyol Tech", "Trendyol QA")
   memberUids: string[];        // Squad üyelerinin UID listesi (Maksimum 20 üye)
-  totalSquadPoints?: number;   // Squad üyelerinin ortalama veya toplam puanı
+  totalSquadPoints?: number;   // Squad üyelerinin toplam puanı
+  averagePoints?: number;      // Squad üyelerinin puan ortalaması
   createdAt: Timestamp;
 }
 

@@ -94,6 +94,27 @@ export const fetchGlobalLeaderboard = async (limitCount: number = 50): Promise<U
 };
 
 /**
+ * 3.5 GLOBAL KADRO LİDERLİK TABLOSUNU ÇEKME
+ * averagePoints değerine göre kadroları azalan sırada listeler.
+ */
+export const fetchGlobalSquadLeaderboard = async (limitCount: number = 50): Promise<Squad[]> => {
+  try {
+    const squadsRef = collection(db, 'squads');
+    const q = query(squadsRef, orderBy('averagePoints', 'desc'), limit(limitCount));
+    const snap = await getDocs(q);
+    
+    const leaderboard: Squad[] = [];
+    snap.forEach((docSnap) => {
+      leaderboard.push(docSnap.data() as Squad);
+    });
+    return leaderboard;
+  } catch (error) {
+    console.error("Kadro Liderlik tablosu çekilemedi:", error);
+    throw error;
+  }
+};
+
+/**
  * 4. FİRESTORE TRANSACTION İLE SQUAD KILİT KATILIM KONTROLÜ
  * Koşul: Squad üye sayısı tam olarak 20'de durmalıdır.
  * Transaction kullanarak eşzamanlı isteklerde sınır aşımını engeller.
@@ -277,6 +298,23 @@ export const getSquadDetails = async (
 
     // Puanlara göre sırala
     members.sort((a, b) => b.totalPoints - a.totalPoints);
+
+    // Ortalama Puanı Hesapla ve Güncelle (Bu gerçek projede backend/Cloud Function üzerinden yapılmalıdır)
+    const totalPts = members.reduce((sum, m) => sum + m.totalPoints, 0);
+    const avgPts = members.length > 0 ? parseFloat((totalPts / members.length).toFixed(1)) : 0;
+    
+    squadData.totalSquadPoints = totalPts;
+    squadData.averagePoints = avgPts;
+
+    // Optional: Update the squad in DB so leaderboard reflects the new average
+    try {
+      await updateDoc(squadRef, {
+        totalSquadPoints: totalPts,
+        averagePoints: avgPts
+      });
+    } catch (e) {
+      console.error("Ortalama puan güncellenemedi:", e);
+    }
 
     return { squad: squadData, members };
   } catch (error) {

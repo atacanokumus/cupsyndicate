@@ -6,6 +6,7 @@ import {
   saveUserPredictions, 
   getUserPredictions, 
   fetchGlobalLeaderboard, 
+  fetchGlobalSquadLeaderboard,
   joinSquadWithTransaction,
   createSquad,
   getSquadDetails
@@ -29,7 +30,7 @@ const pageVariants = {
 };
 
 // --- STATE VE AŞAMA TİPLERİ ---
-type AppState = 'LANDING' | 'GROUPS' | 'THIRDS' | 'SIGNUP_FORCE' | 'KNOCKOUTS' | 'SUMMARY' | 'PROFILE';
+type AppState = 'LANDING' | 'GROUPS' | 'THIRDS' | 'SIGNUP_FORCE' | 'KNOCKOUTS' | 'SUMMARY' | 'PROFILE' | 'LEADERBOARDS';
 
 // --- EN İYİ 3.LER EŞLEŞTİRME ALGORİTMASI (Bipartite DFS with Fallback) ---
 interface ThirdPlaceAssignment {
@@ -106,8 +107,8 @@ function matchThirdPlaceTeams(
 // --- MAÇ EŞLEŞME YAPISI VE TUR TANIMLARI ---
 interface KnockoutMatch {
   id: number;
-  homeSource: { type: 'group' | 'match'; value: string | number };
-  awaySource: { type: 'group' | 'match'; value: string | number };
+  homeSource: { type: 'group' | 'match'; value: string | number; isLoser?: boolean };
+  awaySource: { type: 'group' | 'match'; value: string | number; isLoser?: boolean };
   homeLabel: string;
   awayLabel: string;
   nextMatchId: number;
@@ -155,7 +156,7 @@ const KNOCKOUT_MATCHES_CONFIG: KnockoutMatch[] = [
   { id: 102, homeSource: { type: 'match', value: 99 }, awaySource: { type: 'match', value: 100 }, homeLabel: 'Maç 99 Galibi', awayLabel: 'Maç 100 Galibi', nextMatchId: 104, isHomeInNext: false, round: 'SF' },
 
   // --- FINALS (Maç 103 ve 104) ---
-  { id: 103, homeSource: { type: 'match', value: 101 }, awaySource: { type: 'match', value: 102 }, homeLabel: 'Yarı Final 1 Mağlubu', awayLabel: 'Yarı Final 2 Mağlubu', nextMatchId: 0, isHomeInNext: false, round: 'THIRD' },
+  { id: 103, homeSource: { type: 'match', value: 101, isLoser: true }, awaySource: { type: 'match', value: 102, isLoser: true }, homeLabel: 'Yarı Final 1 Mağlubu', awayLabel: 'Yarı Final 2 Mağlubu', nextMatchId: 0, isHomeInNext: false, round: 'THIRD' },
   { id: 104, homeSource: { type: 'match', value: 101 }, awaySource: { type: 'match', value: 102 }, homeLabel: 'Yarı Final 1 Galibi', awayLabel: 'Yarı Final 2 Galibi', nextMatchId: 0, isHomeInNext: false, round: 'FINAL' }
 ];
 
@@ -182,6 +183,13 @@ export default function RedesignedPredictionWizard() {
   const [userEmail, setUserEmail] = useState<string>('');
   const [userUid, setUserUid] = useState<string>('');
   const [isPredictionsLocked, setIsPredictionsLocked] = useState<boolean>(false);
+
+  // Liderlik ve Read-Only Görüntüleme
+  const [globalPlayers, setGlobalPlayers] = useState<any[]>([]);
+  const [globalSquads, setGlobalSquads] = useState<any[]>([]);
+  const [selectedReadOnlyUid, setSelectedReadOnlyUid] = useState<string | null>(null);
+  const [readOnlyPredictions, setReadOnlyPredictions] = useState<any>(null);
+  const [readOnlyLoading, setReadOnlyLoading] = useState<boolean>(false);
 
   // Grup Sihirbazı İndeksi (0 - 11)
   const [currentGroupIndex, setCurrentGroupIndex] = useState<number>(0);
@@ -454,7 +462,20 @@ export default function RedesignedPredictionWizard() {
     } else {
       const prevMatchId = match.homeSource.value as number;
       const winnerId = knockoutPredictions[prevMatchId];
-      home = winnerId ? getTeamById(winnerId) || null : null;
+      if (winnerId) {
+        if (match.homeSource.isLoser) {
+          const prevMatchConfig = KNOCKOUT_MATCHES_CONFIG.find(m => m.id === prevMatchId);
+          if (prevMatchConfig) {
+            const prevTeams = getMatchTeams(prevMatchConfig);
+            const loserId = prevTeams.home?.id === winnerId ? prevTeams.away?.id : prevTeams.home?.id;
+            home = loserId ? getTeamById(loserId) || null : null;
+          }
+        } else {
+          home = getTeamById(winnerId) || null;
+        }
+      } else {
+        home = null;
+      }
     }
 
     // Deplasmanı Çöz
@@ -476,7 +497,20 @@ export default function RedesignedPredictionWizard() {
     } else {
       const prevMatchId = match.awaySource.value as number;
       const winnerId = knockoutPredictions[prevMatchId];
-      away = winnerId ? getTeamById(winnerId) || null : null;
+      if (winnerId) {
+        if (match.awaySource.isLoser) {
+          const prevMatchConfig = KNOCKOUT_MATCHES_CONFIG.find(m => m.id === prevMatchId);
+          if (prevMatchConfig) {
+            const prevTeams = getMatchTeams(prevMatchConfig);
+            const loserId = prevTeams.home?.id === winnerId ? prevTeams.away?.id : prevTeams.home?.id;
+            away = loserId ? getTeamById(loserId) || null : null;
+          }
+        } else {
+          away = getTeamById(winnerId) || null;
+        }
+      } else {
+        away = null;
+      }
     }
 
     return { home, away };
@@ -490,18 +524,15 @@ export default function RedesignedPredictionWizard() {
 
     // Cascade Reset
     const resetChildPredictions = (mId: number) => {
-      const config = KNOCKOUT_MATCHES_CONFIG.find((m) => m.id === mId);
-      if (!config) return;
-
-      const nextId = config.nextMatchId;
-      if (nextId > 0 && updated[nextId]) {
-        const nextWinner = updated[nextId];
-        const isTeamPlaying = getMatchTeams(KNOCKOUT_MATCHES_CONFIG.find((m) => m.id === nextId)!).home?.id === nextWinner ||
-                              getMatchTeams(KNOCKOUT_MATCHES_CONFIG.find((m) => m.id === nextId)!).away?.id === nextWinner;
-        
-        delete updated[nextId];
-        resetChildPredictions(nextId);
-      }
+      const children = KNOCKOUT_MATCHES_CONFIG.filter(
+        (m) => m.homeSource.value === mId || m.awaySource.value === mId
+      );
+      children.forEach((child) => {
+        if (updated[child.id]) {
+          delete updated[child.id];
+          resetChildPredictions(child.id);
+        }
+      });
     };
 
     resetChildPredictions(matchId);
@@ -646,6 +677,31 @@ export default function RedesignedPredictionWizard() {
     }
   }, [showShareModal, isWatermarkRemoved, userSquad, userName]);
 
+  const handleOpenLeaderboards = async () => {
+    setAppState('LEADERBOARDS');
+    try {
+      const players = await fetchGlobalLeaderboard(50);
+      const squads = await fetchGlobalSquadLeaderboard(50);
+      setGlobalPlayers(players);
+      setGlobalSquads(squads);
+    } catch (e) {
+      console.error("Liderlik tabloları yüklenemedi:", e);
+    }
+  };
+
+  const handleViewUserPredictions = async (uid: string) => {
+    setSelectedReadOnlyUid(uid);
+    setReadOnlyLoading(true);
+    try {
+      const preds = await getUserPredictions(uid);
+      setReadOnlyPredictions(preds);
+    } catch (e) {
+      console.error("Kullanıcı tahminleri yüklenemedi:", e);
+    } finally {
+      setReadOnlyLoading(false);
+    }
+  };
+
   const handleJoinSquad = async () => {
     if (!squadInput.trim()) {
       alert("Lütfen davet kodunu girin.");
@@ -773,7 +829,7 @@ export default function RedesignedPredictionWizard() {
                 CupSyndicate
               </h2>
               <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-                Dünya Kupası 2026 turnuva ağacını grup aşamasından başlayarak tahmin et, sosyal ve kurumsal liglerde zirveye oyna!
+                Dünya Kupası 2026 turnuva ağacını grup aşamasından başlayarak tahmin et, rekabetçi PvP liglerinde zirveye oyna!
               </p>
             </div>
 
@@ -1243,10 +1299,17 @@ export default function RedesignedPredictionWizard() {
               </div>
             </div>
 
-            {/* B2B KURUMSAL KADRO YÖNETİMİ ALANI */}
+            <button
+              onClick={handleOpenLeaderboards}
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold py-3 rounded-xl shadow-glow-amber transition transform hover:-translate-y-0.5"
+            >
+              🏆 Global Liderlik Tablolarını Görüntüle
+            </button>
+
+            {/* PVP KADRO YÖNETİMİ ALANI */}
             <div className="bg-slate-950/40 border border-white/5 rounded-2xl p-5 text-left space-y-4">
               <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-2">
-                🏢 B2B Kurumsal Kadrolar
+                ⚔️ PvP Kadroları ve Klanlar
               </h4>
 
               {userSquad ? (
@@ -1296,7 +1359,7 @@ export default function RedesignedPredictionWizard() {
                   {!showCreateSquad ? (
                     <>
                       <p className="text-[10px] text-slate-400 leading-relaxed">
-                        Şirketiniz veya arkadaş grubunuzla 20 kişilik özel liglerde yarışmak için davet kodu girin veya yeni bir kadro kurun.
+                        Arkadaş grubunuzla veya klanınızla 20 kişilik özel liglerde yarışmak için davet kodu girin veya yeni bir kadro kurun.
                       </p>
                       
                       <div className="flex gap-2">
@@ -1320,17 +1383,17 @@ export default function RedesignedPredictionWizard() {
                         onClick={() => setShowCreateSquad(true)}
                         className="w-full bg-white/5 hover:bg-white/10 text-white text-[10px] py-2 rounded-xl text-center border border-white/10 font-bold transition"
                       >
-                        ➕ Şirketiniz İçin Kadro Oluşturun
+                        ➕ Yeni PvP Kadrosu/Klan Oluşturun
                       </button>
                     </>
                   ) : (
                     // Kadro Oluşturma Formu
                     <div className="space-y-2.5">
                       <div>
-                        <label className="block text-[8px] text-slate-400 font-bold uppercase mb-1">Şirket/Grup Adı</label>
+                        <label className="block text-[8px] text-slate-400 font-bold uppercase mb-1">Klan Adı</label>
                         <input
                           type="text"
-                          placeholder="Örn: Trendyol"
+                          placeholder="Örn: Bordo Bereliler"
                           value={newCompanyName}
                           onChange={(e) => setNewCompanyName(e.target.value)}
                           className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-violet-500"
@@ -1338,10 +1401,10 @@ export default function RedesignedPredictionWizard() {
                       </div>
 
                       <div>
-                        <label className="block text-[8px] text-slate-400 font-bold uppercase mb-1">Kadro Adı</label>
+                        <label className="block text-[8px] text-slate-400 font-bold uppercase mb-1">Takım Adı</label>
                         <input
                           type="text"
-                          placeholder="Örn: Trendyol Tech"
+                          placeholder="Örn: A Takımı"
                           value={newSquadName}
                           onChange={(e) => setNewSquadName(e.target.value)}
                           className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-violet-500"
@@ -1423,7 +1486,7 @@ export default function RedesignedPredictionWizard() {
 
             <div className="bg-slate-950/40 rounded-2xl p-4 border border-white/5 space-y-3">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-400 font-medium">B2B Kadro / Lig:</span>
+                <span className="text-slate-400 font-medium">Klan / Kadro:</span>
                 <span className="text-white font-bold tracking-widest bg-violet-900/30 px-2 py-1 rounded border border-violet-500/20">
                   {userSquad ? userSquad.name : 'Yok'}
                 </span>
@@ -1455,6 +1518,117 @@ export default function RedesignedPredictionWizard() {
             </div>
           </motion.div>
         )}
+
+        {/* 7. LEADERBOARDS STAGE (GLOBAL LİDERLİK) */}
+        {appState === 'LEADERBOARDS' && (
+          <motion.div 
+            key="leaderboards"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="glass-card border border-white/10 rounded-3xl p-6 shadow-2xl space-y-6"
+          >
+            <div className="text-center space-y-2">
+              <span className="text-4xl block filter drop-shadow-[0_2px_8px_rgba(245,158,11,0.5)]">🏆</span>
+              <h3 className="text-xl font-black text-white font-display">Global Sıralama</h3>
+              <p className="text-xs text-slate-400">PvP Klanları ve Oyuncuların Puan Durumu</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* KADROLAR TABLOSU */}
+              <div className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 space-y-4">
+                <h4 className="text-sm font-bold text-amber-400 border-b border-white/5 pb-2">⚔️ En İyi Klanlar</h4>
+                <div className="max-h-60 overflow-y-auto space-y-2 scrollbar-none pr-1">
+                  {globalSquads.length === 0 && <p className="text-xs text-slate-500 text-center">Henüz klan yok.</p>}
+                  {globalSquads.map((sq, idx) => (
+                    <div key={sq.squadId} className="flex justify-between items-center p-2.5 rounded-xl bg-slate-900/60 border border-white/5">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono text-slate-500 font-bold w-4">{idx + 1}.</span>
+                        <span className="text-xs font-semibold text-slate-200">{sq.name}</span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-amber-400">{sq.averagePoints || 0} Puan</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* OYUNCULAR TABLOSU */}
+              <div className="bg-slate-950/40 rounded-2xl border border-white/5 p-4 space-y-4">
+                <h4 className="text-sm font-bold text-violet-400 border-b border-white/5 pb-2">👤 En İyi Oyuncular</h4>
+                <div className="max-h-60 overflow-y-auto space-y-2 scrollbar-none pr-1">
+                  {globalPlayers.length === 0 && <p className="text-xs text-slate-500 text-center">Henüz oyuncu yok.</p>}
+                  {globalPlayers.map((player, idx) => (
+                    <button 
+                      key={player.uid} 
+                      onClick={() => handleViewUserPredictions(player.uid)}
+                      className="w-full flex justify-between items-center p-2.5 rounded-xl bg-slate-900/60 border border-white/5 hover:bg-slate-800 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono text-slate-500 font-bold w-4">{idx + 1}.</span>
+                        <span className="text-xs font-semibold text-white underline decoration-violet-500/50 underline-offset-2">{player.username}</span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-violet-400">{player.totalPoints} Puan</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setAppState('SUMMARY')}
+              className="w-full bg-slate-900/60 hover:bg-slate-800 border border-white/5 text-slate-300 font-bold px-4 py-3 rounded-xl text-xs transition"
+            >
+              ← Özete Dön
+            </button>
+          </motion.div>
+        )}
+
+        {/* READ-ONLY TAHMİN MODALI */}
+        <AnimatePresence>
+          {selectedReadOnlyUid && (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            >
+              <div className="bg-slate-900 border border-white/10 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
+                <button 
+                  onClick={() => { setSelectedReadOnlyUid(null); setReadOnlyPredictions(null); }}
+                  className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-white hover:bg-slate-700"
+                >
+                  ✕
+                </button>
+                <h3 className="text-lg font-bold text-white mb-4">Oyuncu Tahminleri</h3>
+                
+                {readOnlyLoading ? (
+                  <div className="text-center p-10 text-slate-400 text-xs">Tahminler Yükleniyor...</div>
+                ) : readOnlyPredictions ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3 text-center">
+                      <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5">
+                        <span className="text-[9px] text-slate-500 font-bold uppercase block mb-1">Şampiyon</span>
+                        <span className="text-sm font-bold text-amber-400">
+                          {getTeamById(readOnlyPredictions?.knockoutTreeData?.matches?.[104]?.predictionUid)?.name || '?'}
+                        </span>
+                      </div>
+                      <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5">
+                        <span className="text-[9px] text-slate-500 font-bold uppercase block mb-1">Üçüncü</span>
+                        <span className="text-sm font-bold text-slate-300">
+                          {getTeamById(readOnlyPredictions?.knockoutTreeData?.matches?.[103]?.predictionUid)?.name || '?'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-slate-400 italic text-center">
+                      Not: Diğer tahminler şifrelenmiştir ve rekabet bütünlüğü için gizli tutulmaktadır. (Sadece şampiyonlar gösterilir)
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-10 text-slate-400 text-xs">Tahmin bulunamadı.</div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         </AnimatePresence>
       </main>
