@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Yardımcı Kontroller
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isLoggedIn() && request.auth.uid == userId;
+    }
+
+    // 1. KULLANICILAR KOLEKSİYONU
+    match /users/{userId} {
+      allow read: if isLoggedIn();
+      // Yalnızca kullanıcı kendi belgesini oluşturabilir veya güncelleyebilir
+      allow write: if isOwner(userId);
+    }
+
+    // 2. TAHMİNLER KOLEKSİYONU (Kritik Kilit Kuralları)
+    match /predictions/{userId} {
+      allow read: if isLoggedIn();
+      
+      // Kullanıcı kendi tahminlerini oluşturabilir/güncelleyebilir ancak:
+      // A. Turnuva başlama tarihi olan 11 Haziran 2026 saat 16:00 UTC'den önce olmalıdır
+      // B. Mevcut belgesi kilitlenmemiş olmalıdır (isLocked bayrağı kontrolü)
+      allow write: if isOwner(userId) 
+        && request.time < timestamp.date(2026, 6, 11)
+        && (resource == null || resource.data.isLocked == false);
+    }
+
+    // 3. ŞİRKETLER KOLEKSİYONU (B2B Clash)
+    match /companies/{companyId} {
+      allow read: if isLoggedIn();
+      // Yeni şirket kaydı veya düzenlemesi için yetki kontrolü
+      allow create, update: if isLoggedIn() 
+        && (request.resource.data.paidByUid == request.auth.uid || request.resource.data.isPremiumTier == false);
+      allow delete: if isLoggedIn() && resource.data.paidByUid == request.auth.uid;
+    }
+
+    // 4. SQUAD'LAR KOLEKSİYONU (Kadro Sınırı Kuralları)
+    match /squads/{squadId} {
+      allow read: if isLoggedIn();
+      
+      // Bir squad'ın üye listesi (memberUids) asla 20'den fazla olamaz
+      allow create, update: if isLoggedIn() 
+        && request.resource.data.memberUids.size() <= 20
+        && (resource == null || resource.data.companyId == request.resource.data.companyId);
+        
+      allow delete: if isLoggedIn() && request.auth.uid in resource.data.memberUids;
+    }
+
+    // 5. SOSYAL LİGLER KOLEKSİYONU (Özel Ligler)
+    match /leagues/{leagueId} {
+      allow read: if isLoggedIn();
+      
+      // Yalnızca kurucu veya üyeler yazma/güncelleme yapabilir
+      allow create: if isLoggedIn() && request.resource.data.creatorUid == request.auth.uid;
+      allow update: if isLoggedIn() 
+        && (request.resource.data.creatorUid == resource.data.creatorUid)
+        && (request.auth.uid in request.resource.data.memberUids || request.auth.uid == resource.data.creatorUid);
+        
+      allow delete: if isLoggedIn() && resource.data.creatorUid == request.auth.uid;
+    }
+  }
+}
