@@ -30,11 +30,10 @@ export default function RootLayout({
     <html lang="tr" className={`${inter.variable} ${outfit.variable} font-sans`}>
       <head>
         {/* Google AdSense Script */}
-        <Script
+        <script
           async
           src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-7838551368632112'}`}
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
         {/* Google Publisher Tag (GPT) Script */}
         <Script
