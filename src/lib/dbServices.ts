@@ -323,3 +323,104 @@ export const getSquadDetails = async (
   }
 };
 
+/**
+ * 8. KADRO TEMEL BİLGİLERİNİ ÇEKME (Davet sayfası için)
+ */
+export const getSquadBasicInfo = async (
+  squadId: string
+): Promise<{ name: string; memberCount: number } | null> => {
+  try {
+    const squadRef = doc(db, 'squads', squadId);
+    const snap = await getDoc(squadRef);
+    if (!snap.exists()) return null;
+    const data = snap.data() as Squad;
+    return { name: data.name, memberCount: (data.memberUids || []).length };
+  } catch (error) {
+    console.error("Kadro bilgisi çekilemedi:", error);
+    return null;
+  }
+};
+
+/**
+ * 9. KLAN ÜYELERİNİN GRUP TAHMİN İSTATİSTİKLERİNİ ÇEKME
+ * Her grup için her takımın kaç kez 1., 2., 3. seçildiğini yüzde olarak döndürür.
+ */
+export const fetchSquadMemberPredictions = async (
+  squadId: string,
+  currentUserUid: string
+): Promise<any> => {
+  try {
+    const squadRef = doc(db, 'squads', squadId);
+    const squadSnap = await getDoc(squadRef);
+    if (!squadSnap.exists()) return {};
+
+    const squadData = squadSnap.data() as Squad;
+    const memberUids = (squadData.memberUids || []).filter(uid => uid !== currentUserUid);
+
+    if (memberUids.length === 0) return {};
+
+    // Tüm üyelerin tahminlerini çek
+    const allPreds: any[] = [];
+    for (const uid of memberUids) {
+      try {
+        const predRef = doc(db, 'predictions', uid);
+        const predSnap = await getDoc(predRef);
+        if (predSnap.exists()) {
+          allPreds.push(predSnap.data());
+        }
+      } catch (e) {
+        // skip failed fetches
+      }
+    }
+
+    if (allPreds.length === 0) return {};
+
+    // Grup bazında istatistik hesapla
+    const stats: any = {};
+    const groupIds = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+
+    for (const gId of groupIds) {
+      const counts: { [teamId: string]: { first: number; second: number; third: number } } = {};
+      let voters = 0;
+
+      for (const pred of allPreds) {
+        const groupData = pred?.groupStageData?.groups?.[gId];
+        if (!groupData) continue;
+        voters++;
+        const first = groupData.first || groupData.top2?.[0];
+        const second = groupData.second || groupData.top2?.[1];
+        const third = groupData.third || groupData.thirdPlaceId;
+
+        if (first) {
+          if (!counts[first]) counts[first] = { first: 0, second: 0, third: 0 };
+          counts[first].first++;
+        }
+        if (second) {
+          if (!counts[second]) counts[second] = { first: 0, second: 0, third: 0 };
+          counts[second].second++;
+        }
+        if (third) {
+          if (!counts[third]) counts[third] = { first: 0, second: 0, third: 0 };
+          counts[third].third++;
+        }
+      }
+
+      if (voters > 0) {
+        const groupStats: any = { _totalVoters: voters };
+        for (const teamId of Object.keys(counts)) {
+          groupStats[teamId] = {
+            firstPct: Math.round((counts[teamId].first / voters) * 100),
+            secondPct: Math.round((counts[teamId].second / voters) * 100),
+            thirdPct: Math.round((counts[teamId].third / voters) * 100)
+          };
+        }
+        stats[gId] = groupStats;
+      }
+    }
+
+    return stats;
+  } catch (error) {
+    console.error("Klan tahmin istatistikleri çekilemedi:", error);
+    return {};
+  }
+};

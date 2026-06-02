@@ -141,3 +141,16 @@ export const allTeamsMap = new Map<string, Team>(
 export const getTeamById = (id: string): Team | undefined => {
   return allTeamsMap.get(id);
 };
+
+/**
+ * Grup içi normalize edilmiş ihtimalleri hesaplar.
+ * Turnuva kazanma olasılıklarını (probability) alıp grup içinde normalize eder.
+ * 4 takımın toplamı %100 olur.
+ */
+export const getGroupNormalizedProbabilities = (groupId: string): Map<string, number> => {
+  const group = groupsData.find(g => g.id === groupId);
+  if (!group) return new Map();
+  const total = group.teams.reduce((sum, t) => sum + t.probability, 0);
+  if (total === 0) return new Map(group.teams.map(t => [t.id, 25])); // eşit dağıtım
+  return new Map(group.teams.map(t => [t.id, Math.round((t.probability / total) * 1000) / 10]));
+};

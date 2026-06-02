@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { groupsData, Team, getTeamById } from '../../lib/teamData';
+import { useSearchParams } from 'next/navigation';
+import { groupsData, Team, getTeamById, getGroupNormalizedProbabilities } from '../../lib/teamData';
 import { 
   saveUserPredictions, 
   getUserPredictions, 
@@ -9,7 +10,8 @@ import {
   fetchGlobalSquadLeaderboard,
   joinSquadWithTransaction,
   createSquad,
-  getSquadDetails
+  getSquadDetails,
+  fetchSquadMemberPredictions
 } from '../../lib/dbServices';
 import AdSenseWrapper from '../../components/AdSenseWrapper';
 import { generateBracketCard } from '../../lib/canvasHelper';
@@ -163,12 +165,14 @@ const KNOCKOUT_MATCHES_CONFIG: KnockoutMatch[] = [
 export default function RedesignedPredictionWizard() {
   // --- DURUM YÖNETİMİ ---
   const [appState, setAppState] = useState<AppState>('LANDING');
+  const searchParams = useSearchParams();
   
   // Üyelik ve Davet Kodları
   const [inviteCode, setInviteCode] = useState<string>('');
   const [isWatermarkRemoved, setIsWatermarkRemoved] = useState<boolean>(false);
   const [shareCardImage, setShareCardImage] = useState<string>('');
-  const [rewardedAdPurpose, setRewardedAdPurpose] = useState<'AI_INSIGHT' | 'REMOVE_WATERMARK'>('AI_INSIGHT');
+  const [rewardedAdPurpose, setRewardedAdPurpose] = useState<'AI_INSIGHT' | 'REMOVE_WATERMARK' | 'GROUP_UNLOCK'>('AI_INSIGHT');
+  const [linkCopied, setLinkCopied] = useState<boolean>(false);
   
   // B2B Kadro Yönetimi State'leri
   const [squadName, setSquadName] = useState<string>('');
@@ -218,10 +222,32 @@ export default function RedesignedPredictionWizard() {
   // AI Analizi
   const [aiInsightOpen, setAiInsightOpen] = useState<boolean>(false);
   const [aiInsightText, setAiInsightText] = useState<string>('');
+
+  // Klan Tahmin İstatistikleri ve Grup İhtimal Kilidi
+  const [squadPredictionStats, setSquadPredictionStats] = useState<any>(null);
+  const [unlockedGroups, setUnlockedGroups] = useState<Set<string>>(new Set());
+  const [adRewardGroupId, setAdRewardGroupId] = useState<string | null>(null);
   const [insightLoading, setInsightLoading] = useState<boolean>(false);
 
   // Paylaşım Modal
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
+
+  // --- URL'DEN DAVET KODUNU OKU ---
+  useEffect(() => {
+    const inviteParam = searchParams.get('invite');
+    if (inviteParam) {
+      setInviteCode(inviteParam.toUpperCase());
+    }
+  }, [searchParams]);
+
+  // --- KLAN TAHMİN İSTATİSTİKLERİNİ ÇEK ---
+  useEffect(() => {
+    if (currentSquadId && userUid) {
+      fetchSquadMemberPredictions(currentSquadId, userUid)
+        .then(stats => setSquadPredictionStats(stats))
+        .catch(err => console.error("Klan tahmin istatistikleri çekilemedi:", err));
+    }
+  }, [currentSquadId, userUid]);
 
   // --- GOOGLE/APPLE GİRİŞ ---
   useEffect(() => {
@@ -559,6 +585,13 @@ export default function RedesignedPredictionWizard() {
     setRewardedAdOpen(true);
   };
 
+  const triggerGroupUnlock = (groupId: string) => {
+    setAdRewardGroupId(groupId);
+    setRewardedAdPurpose('GROUP_UNLOCK');
+    setRewardedCountdown(15);
+    setRewardedAdOpen(true);
+  };
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (rewardedAdOpen && rewardedCountdown > 0) {
@@ -571,10 +604,12 @@ export default function RedesignedPredictionWizard() {
       } else if (rewardedAdPurpose === 'REMOVE_WATERMARK') {
         setIsWatermarkRemoved(true);
         alert('Tebrikler! Ödüllü reklamı başarıyla izlediniz. Paylaşım kartınızdaki filigran kaldırıldı!');
+      } else if (rewardedAdPurpose === 'GROUP_UNLOCK' && adRewardGroupId) {
+        setUnlockedGroups(prev => { const next = new Set(Array.from(prev)); next.add(adRewardGroupId); return next; });
       }
     }
     return () => clearTimeout(timer);
-  }, [rewardedAdOpen, rewardedCountdown, rewardedAdPurpose, adRewardTeamId]);
+  }, [rewardedAdOpen, rewardedCountdown, rewardedAdPurpose, adRewardTeamId, adRewardGroupId]);
 
   const showAiInsight = (team: Team) => {
     setInsightLoading(true);
@@ -928,6 +963,9 @@ export default function RedesignedPredictionWizard() {
             {(() => {
               const group = groupsData[currentGroupIndex];
               const pred = groupPredictions[group.id] || { first: '', second: '', third: '' };
+              const isGroupUnlocked = unlockedGroups.has(group.id);
+              const normalizedProbs = isGroupUnlocked ? getGroupNormalizedProbabilities(group.id) : null;
+              const clanStats = squadPredictionStats?.[group.id];
 
               return (
                 <div className="glass-card border border-white/10 rounded-3xl p-6 shadow-2xl space-y-4">
@@ -944,11 +982,27 @@ export default function RedesignedPredictionWizard() {
                     Sırasıyla tıklayarak grubun en iyi iki takımını (🥇1. ve 🥈2.) ve ardından en iyi 3. adayını (🥉3.) seçin.
                   </p>
 
+                  {/* GRUP İHTİMAL KİLİT BUTONU */}
+                  {!isGroupUnlocked ? (
+                    <button
+                      type="button"
+                      onClick={() => triggerGroupUnlock(group.id)}
+                      className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-gradient-to-r from-amber-950/40 to-orange-950/40 border border-amber-700/30 text-amber-400 text-[10px] font-bold hover:from-amber-950/60 hover:to-orange-950/60 transition"
+                    >
+                      🔒 Grup İçi İhtimalleri Görmek İçin Reklam İzle
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-1.5 p-2 rounded-xl bg-emerald-950/20 border border-emerald-800/30 text-[10px] text-emerald-400 font-bold">
+                      ✅ Grup ihtimalleri açık — ihtimaller her takımın yanında gösteriliyor
+                    </div>
+                  )}
+
                   <div className="space-y-2.5">
                     {group.teams.map((team) => {
                       const isFirst = pred.first === team.id;
                       const isSecond = pred.second === team.id;
                       const isThird = pred.third === team.id;
+                      const teamClanStats = clanStats?.[team.id];
 
                       let badge = null;
                       if (isFirst) badge = <span className="bg-yellow-500 text-slate-950 font-black px-1.5 py-0.5 rounded text-[10px] shadow-sm">🥇 1</span>;
@@ -956,38 +1010,63 @@ export default function RedesignedPredictionWizard() {
                       else if (isThird) badge = <span className="bg-amber-700 text-white font-black px-1.5 py-0.5 rounded text-[10px] shadow-sm">🥉 3</span>;
 
                       return (
-                        <div
-                          key={team.id}
-                          className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-300 cursor-pointer ${
-                            isFirst || isSecond
-                              ? 'bg-violet-950/20 border-violet-500/60 text-white shadow-glow-violet scale-[1.01]'
-                              : isThird
-                              ? 'bg-amber-950/20 border-amber-700/50 text-white shadow-glow-amber'
-                              : 'glass-card-hover border-white/5 bg-slate-950/20 hover:bg-slate-950/40 text-slate-300'
-                          }`}
-                          onClick={() => handleTeamClick(group.id, team.id)}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-xl filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">{team.flag}</span>
-                            <span className="text-xs font-semibold">{team.name}</span>
+                        <div key={team.id} className="space-y-0">
+                          <div
+                            className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-300 cursor-pointer ${
+                              isFirst || isSecond
+                                ? 'bg-violet-950/20 border-violet-500/60 text-white shadow-glow-violet scale-[1.01]'
+                                : isThird
+                                ? 'bg-amber-950/20 border-amber-700/50 text-white shadow-glow-amber'
+                                : 'glass-card-hover border-white/5 bg-slate-950/20 hover:bg-slate-950/40 text-slate-300'
+                            }`}
+                            onClick={() => handleTeamClick(group.id, team.id)}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-xl filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">{team.flag}</span>
+                              <div className="flex flex-col">
+                                <span className="text-xs font-semibold">{team.name}</span>
+                                {isGroupUnlocked && normalizedProbs ? (
+                                  <span className="text-[9px] text-amber-400 font-mono font-bold">
+                                    Grup İhtimali: %{normalizedProbs.get(team.id)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-slate-500 font-mono">
+                                    Turnuva: %{team.probability}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {badge}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  triggerAiInsight(team);
+                                }}
+                                className="p-1 px-2 rounded-lg bg-violet-900/40 hover:bg-violet-850 text-violet-300 hover:text-white transition text-[9px] flex items-center gap-1 border border-violet-750/30 font-bold"
+                              >
+                                ✨ AI
+                              </button>
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-[9px] text-slate-500 font-mono">
-                              Kazanma Oranı: %{team.probability}
-                            </span>
-                            {badge}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                triggerAiInsight(team);
-                              }}
-                              className="p-1 px-2 rounded-lg bg-violet-900/40 hover:bg-violet-850 text-violet-300 hover:text-white transition text-[9px] flex items-center gap-1 border border-violet-750/30 font-bold"
-                            >
-                              ✨ AI Analiz
-                            </button>
-                          </div>
+                          {/* KLAN TAHMİN İSTATİSTİKLERİ */}
+                          {teamClanStats && clanStats?._totalVoters > 0 && (
+                            <div className="mx-3 px-2 py-1.5 bg-slate-950/40 border-x border-b border-white/5 rounded-b-lg flex items-center gap-2 text-[8px] text-slate-500">
+                              <span className="text-slate-600">👥 Klanın ({clanStats._totalVoters}):</span>
+                              {teamClanStats.firstPct > 0 && (
+                                <span className="bg-yellow-500/10 text-yellow-400 px-1 py-0.5 rounded font-bold">🥇{teamClanStats.firstPct}%</span>
+                              )}
+                              {teamClanStats.secondPct > 0 && (
+                                <span className="bg-slate-500/10 text-slate-400 px-1 py-0.5 rounded font-bold">🥈{teamClanStats.secondPct}%</span>
+                              )}
+                              {teamClanStats.thirdPct > 0 && (
+                                <span className="bg-amber-700/10 text-amber-500 px-1 py-0.5 rounded font-bold">🥉{teamClanStats.thirdPct}%</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1332,16 +1411,29 @@ export default function RedesignedPredictionWizard() {
                     </div>
                   </div>
 
-                  {/* Kopyalama ve Paylaşma Butonu */}
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(userSquad.squadId);
-                      alert(`Davet kodu kopyalandı: ${userSquad.squadId}. Arkadaşlarınızı kadroya (Maks 20 kişi) davet edebilirsiniz!`);
-                    }}
-                    className="w-full bg-slate-900 hover:bg-slate-850 border border-white/5 text-slate-350 text-[10px] py-1.5 rounded-lg text-center font-bold transition"
-                  >
-                    🔗 Davet Kodunu Kopyala (Üye: {squadMembers.length}/20)
-                  </button>
+                  {/* Davet Linki Kopyalama Butonları */}
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        const link = `${window.location.origin}/invite/${userSquad.squadId}`;
+                        navigator.clipboard.writeText(link);
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 3000);
+                      }}
+                      className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-[10px] py-2.5 rounded-xl text-center font-bold transition shadow-md flex items-center justify-center gap-1.5"
+                    >
+                      {linkCopied ? '✅ Davet Linki Kopyalandı!' : '📎 Davet Linkini Kopyala & Paylaş'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(userSquad.squadId);
+                        alert(`Davet kodu kopyalandı: ${userSquad.squadId}`);
+                      }}
+                      className="w-full bg-slate-900 hover:bg-slate-850 border border-white/5 text-slate-350 text-[10px] py-1.5 rounded-lg text-center font-bold transition"
+                    >
+                      🔗 Sadece Kodu Kopyala: {userSquad.squadId} (Üye: {squadMembers.length}/20)
+                    </button>
+                  </div>
 
                   {/* Kadro Liderlik Sıralaması */}
                   <div className="space-y-1.5 mt-2">
