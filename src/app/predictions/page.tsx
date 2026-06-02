@@ -14,6 +14,7 @@ import {
   fetchSquadMemberPredictions
 } from '../../lib/dbServices';
 import AdSenseWrapper from '../../components/AdSenseWrapper';
+import GPTWrapper from '../../components/GPTWrapper';
 import { generateBracketCard } from '../../lib/canvasHelper';
 import { fetchTeamAiAnalysis } from '../../lib/geminiService';
 
@@ -284,6 +285,7 @@ function RedesignedPredictionWizardContent() {
   // --- REKLAM VE MONETIZATION ---
   const [rewardedAdOpen, setRewardedAdOpen] = useState<boolean>(false);
   const [rewardedCountdown, setRewardedCountdown] = useState<number>(15);
+  const [useGptRewarded, setUseGptRewarded] = useState<boolean>(true);
   const [interstitialAdOpen, setInterstitialAdOpen] = useState<boolean>(false);
   const [interstitialCountdown, setInterstitialCountdown] = useState<number>(5);
   const [adRewardTeamId, setAdRewardTeamId] = useState<string | null>(null);
@@ -677,6 +679,7 @@ function RedesignedPredictionWizardContent() {
     setAdRewardTeamId(team.id);
     setRewardedAdPurpose('AI_INSIGHT');
     setRewardedCountdown(15);
+    setUseGptRewarded(true);
     setRewardedAdOpen(true);
   };
 
@@ -684,6 +687,7 @@ function RedesignedPredictionWizardContent() {
     setAdRewardGroupId(groupId);
     setRewardedAdPurpose('GROUP_UNLOCK');
     setRewardedCountdown(15);
+    setUseGptRewarded(true);
     setRewardedAdOpen(true);
   };
 
@@ -691,29 +695,34 @@ function RedesignedPredictionWizardContent() {
     setAdRewardMatchId(matchId);
     setRewardedAdPurpose('MATCH_UNLOCK');
     setRewardedCountdown(15);
+    setUseGptRewarded(true);
     setRewardedAdOpen(true);
+  };
+
+  const grantAdReward = () => {
+    setRewardedAdOpen(false);
+    if (rewardedAdPurpose === 'AI_INSIGHT' && adRewardTeamId) {
+      const team = getTeamById(adRewardTeamId);
+      if (team) showAiInsight(team);
+    } else if (rewardedAdPurpose === 'REMOVE_WATERMARK') {
+      setIsWatermarkRemoved(true);
+      alert('Tebrikler! Ödüllü reklamı başarıyla izlediniz. Paylaşım kartınızdaki filigran kaldırıldı!');
+    } else if (rewardedAdPurpose === 'GROUP_UNLOCK' && adRewardGroupId) {
+      setUnlockedGroups(prev => { const next = new Set(Array.from(prev)); next.add(adRewardGroupId); return next; });
+    } else if (rewardedAdPurpose === 'MATCH_UNLOCK' && adRewardMatchId !== null) {
+      setUnlockedMatches(prev => { const next = new Set(Array.from(prev)); next.add(adRewardMatchId); return next; });
+    }
   };
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (rewardedAdOpen && rewardedCountdown > 0) {
+    if (rewardedAdOpen && !useGptRewarded && rewardedCountdown > 0) {
       timer = setTimeout(() => setRewardedCountdown(rewardedCountdown - 1), 1000);
-    } else if (rewardedAdOpen && rewardedCountdown === 0) {
-      setRewardedAdOpen(false);
-      if (rewardedAdPurpose === 'AI_INSIGHT' && adRewardTeamId) {
-        const team = getTeamById(adRewardTeamId);
-        if (team) showAiInsight(team);
-      } else if (rewardedAdPurpose === 'REMOVE_WATERMARK') {
-        setIsWatermarkRemoved(true);
-        alert('Tebrikler! Ödüllü reklamı başarıyla izlediniz. Paylaşım kartınızdaki filigran kaldırıldı!');
-      } else if (rewardedAdPurpose === 'GROUP_UNLOCK' && adRewardGroupId) {
-        setUnlockedGroups(prev => { const next = new Set(Array.from(prev)); next.add(adRewardGroupId); return next; });
-      } else if (rewardedAdPurpose === 'MATCH_UNLOCK' && adRewardMatchId !== null) {
-        setUnlockedMatches(prev => { const next = new Set(Array.from(prev)); next.add(adRewardMatchId); return next; });
-      }
+    } else if (rewardedAdOpen && !useGptRewarded && rewardedCountdown === 0) {
+      grantAdReward();
     }
     return () => clearTimeout(timer);
-  }, [rewardedAdOpen, rewardedCountdown, rewardedAdPurpose, adRewardTeamId, adRewardGroupId, adRewardMatchId]);
+  }, [rewardedAdOpen, rewardedCountdown, rewardedAdPurpose, adRewardTeamId, adRewardGroupId, adRewardMatchId, useGptRewarded]);
 
   const showAiInsight = (team: Team) => {
     setInsightLoading(true);
@@ -2066,22 +2075,37 @@ function RedesignedPredictionWizardContent() {
             <div className="h-1.5 bg-violet-600 absolute top-0 left-0 right-0 animate-pulse" />
             
             <div className="space-y-2">
-              <div className="w-12 h-12 rounded-full bg-violet-900/30 flex items-center justify-between border border-violet-500/20 mx-auto text-xl">
+              <div className="w-12 h-12 rounded-full bg-violet-900/30 flex items-center justify-center border border-violet-500/20 mx-auto text-xl">
                 📺
               </div>
-              <h3 className="text-base font-bold text-white">Yapay Zeka Derin Analizi Yükleniyor</h3>
+              <h3 className="text-base font-bold text-white">
+                {rewardedAdPurpose === 'AI_INSIGHT' ? 'Yapay Zeka Derin Analizi Yükleniyor' :
+                 rewardedAdPurpose === 'GROUP_UNLOCK' ? 'Grup Detaylı İhtimalleri Açılıyor' :
+                 rewardedAdPurpose === 'REMOVE_WATERMARK' ? 'Filigran Kaldırılıyor' : 'Maç İçi İhtimaller Açılıyor'}
+              </h3>
               <p className="text-xs text-slate-400">
-                Premium üye olmayan kullanıcılarımız için maç analizi Google Rewarded Reklamları ile finanse edilmektedir. Analizi açmak için videoyu sonuna kadar izleyin.
+                Premium üye olmayan kullanıcılarımız için bu özellik Google Reklamları ile finanse edilmektedir.
               </p>
             </div>
 
-            <div className="bg-black/40 border border-slate-950 p-4 rounded-xl space-y-3">
-              <div className="h-3.5 bg-slate-900 rounded animate-pulse w-3/4 mx-auto" />
-              <div className="h-3.5 bg-slate-900 rounded animate-pulse w-1/2 mx-auto" />
-              <div className="text-2xl font-black text-indigo-400 tracking-widest pt-2">
-                {rewardedCountdown} saniye kaldı
+            {useGptRewarded ? (
+              <GPTWrapper
+                onAdCompleted={grantAdReward}
+                onAdClosed={() => setRewardedAdOpen(false)}
+                onAdFailed={() => setUseGptRewarded(false)}
+              />
+            ) : (
+              <div className="space-y-4">
+                <AdSenseWrapper slot="rewarded-fallback-banner" format="rectangle" className="my-1.5 max-h-[250px]" />
+                
+                <div className="bg-black/40 border border-slate-950 p-4 rounded-xl space-y-2">
+                  <div className="text-2xl font-black text-indigo-400 tracking-widest">
+                    {rewardedCountdown} saniye kaldı
+                  </div>
+                  <p className="text-[10px] text-slate-500">Reklam yüklenmezse süre bitince otomatik açılacaktır.</p>
+                </div>
               </div>
-            </div>
+            )}
 
             <button
               onClick={() => setRewardedAdOpen(false)}
@@ -2106,12 +2130,8 @@ function RedesignedPredictionWizardContent() {
               </span>
             </div>
 
-            <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-xl min-h-[250px] flex flex-col justify-center items-center gap-4 text-center">
-              <span className="text-4xl text-slate-700 animate-bounce">📱</span>
-              <div>
-                <p className="text-xs text-slate-500 font-semibold uppercase">Google AdSense (Slot B - Interstitial)</p>
-                <p className="text-[10px] text-slate-650 mt-1">Grup Aşaması Bitti - Elemeler Yükleniyor</p>
-              </div>
+            <div className="bg-slate-900/40 border border-slate-800 p-4 rounded-xl min-h-[280px] flex flex-col justify-center items-center gap-4 text-center">
+              <AdSenseWrapper slot="interstitial-modal-slot" format="rectangle" className="my-0 max-h-[250px]" />
               <div className="h-1.5 w-40 bg-slate-950 rounded overflow-hidden">
                 <div className="h-full bg-indigo-600 rounded animate-loadingProgress" />
               </div>

@@ -18,34 +18,37 @@ export default function AdSenseWrapper({
   const [adFailed, setAdFailed] = useState(false);
   const [adLoaded, setAdLoaded] = useState(false);
 
+  const clientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-3940256099942544';
+
   useEffect(() => {
-    // Client-side execution check
     if (typeof window !== 'undefined') {
       try {
-        // Load AdSense Script if not already loaded
-        if (!document.getElementById('adsense-script')) {
-          const script = document.createElement('script');
-          script.id = 'adsense-script';
-          script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + (process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-dummy');
-          script.async = true;
-          script.crossOrigin = 'anonymous';
-          document.head.appendChild(script);
-        }
+        const pushAd = () => {
+          try {
+            ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+            setAdLoaded(true);
+          } catch (e) {
+            console.warn('AdSense push failed:', e);
+            // Don't mark as failed immediately if it's just multiple pushes or rendering delays
+          }
+        };
 
-        // Initialize ad
-        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
-        setAdLoaded(true);
+        // Delay push slightly to ensure the DOM elements are fully rendered and layout is settled
+        const timer = setTimeout(() => {
+          pushAd();
+        }, 100);
+
+        return () => clearTimeout(timer);
       } catch (err) {
-        console.warn('AdSense initialization failed, rendering layout placeholder.', err);
+        console.warn('AdSense initialization failed, rendering placeholder.', err);
         setAdFailed(true);
       }
     }
   }, [slot]);
 
-  // Premium, dark-themed responsive placeholder for development or ad-blockers
   return (
     <div className={`w-full overflow-hidden my-3 mx-auto max-w-full ${className}`}>
-      {adFailed || !process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID ? (
+      {adFailed ? (
         <div className="glass-card border border-white/5 rounded-xl p-3 flex flex-col justify-center items-center gap-1.5 text-center min-h-[90px] relative overflow-hidden bg-slate-950/20">
           <div className="absolute top-1.5 left-2.5 text-[8px] text-slate-500 border border-slate-900 px-1 py-0.2 rounded font-bold uppercase tracking-wider">
             Sponsor
@@ -56,15 +59,12 @@ export default function AdSenseWrapper({
           <div className="text-[8px] text-slate-500 font-medium">
             Turnuva heyecanına ortak olan sponsor markalarımız burada yayınlanacaktır.
           </div>
-          <div className="w-16 h-1 bg-violet-600/30 rounded mt-1 overflow-hidden">
-            <div className="h-full bg-violet-500 rounded animate-pulse" style={{ width: '60%' }} />
-          </div>
         </div>
       ) : (
         <ins
           className="adsbygoogle"
           style={{ display: 'block' }}
-          data-ad-client={process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID}
+          data-ad-client={clientId}
           data-ad-slot={slot}
           data-ad-format={format}
           data-full-width-responsive={responsive ? 'true' : 'false'}
@@ -73,3 +73,4 @@ export default function AdSenseWrapper({
     </div>
   );
 }
+
