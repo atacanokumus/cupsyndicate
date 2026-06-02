@@ -192,7 +192,7 @@ export function generateBracketCard(data: ShareCardData): Promise<string> {
 
       ctx.font = 'bold 22px Inter, system-ui, sans-serif';
       ctx.fillStyle = '#6ee7b7';
-      ctx.fillText('✨ CUP SYNDICATE ONAYLI KART', 540, 1703);
+      ctx.fillText('✨ KUPA TAHMİNİ ONAYLI KART', 540, 1703);
     }
 
     // Web Adresi
@@ -202,12 +202,12 @@ export function generateBracketCard(data: ShareCardData): Promise<string> {
     textGrad.addColorStop(0, '#c084fc'); // purple-400
     textGrad.addColorStop(1, '#f472b6'); // pink-400
     ctx.fillStyle = textGrad;
-    ctx.fillText('cupsyndicate.com', 540, 1800);
+    ctx.fillText('kupatahmini.com', 540, 1800);
 
     // Küçük sürüm / telif bilgisi
     ctx.font = '20px Inter, system-ui, sans-serif';
     ctx.fillStyle = '#334155';
-    ctx.fillText('CupSyndicate 2026. Tüm hakları saklıdır.', 540, 1845);
+    ctx.fillText('KupaTahmini.com 2026. Tüm hakları saklıdır.', 540, 1845);
 
     // Canvas'tan PNG data URL üret
     try {

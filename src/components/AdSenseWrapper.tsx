@@ -54,7 +54,7 @@ export default function AdSenseWrapper({
             Sponsor
           </div>
           <div className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider font-display mt-2">
-            CupSyndicate Reklam Alanı
+            KupaTahmini.com Reklam Alanı
           </div>
           <div className="text-[8px] text-slate-500 font-medium">
             Turnuva heyecanına ortak olan sponsor markalarımız burada yayınlanacaktır.
@@ -62,7 +62,7 @@ export default function AdSenseWrapper({
         </div>
       ) : (
         <ins
-          className="adsbygoogle"
+          className={`adsbygoogle ${format === 'horizontal' ? 'adsbygoogle-horizontal' : ''}`}
           style={{ display: 'block', height: format === 'horizontal' ? '50px' : 'auto', maxHeight: format === 'horizontal' ? '50px' : 'none' }}
           data-ad-client={clientId}
           data-ad-slot={slot}

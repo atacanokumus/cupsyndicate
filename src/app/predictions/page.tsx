@@ -724,14 +724,23 @@ function RedesignedPredictionWizardContent() {
     return () => clearTimeout(timer);
   }, [rewardedAdOpen, rewardedCountdown, rewardedAdPurpose, adRewardTeamId, adRewardGroupId, adRewardMatchId, useGptRewarded]);
 
-  const showAiInsight = (team: Team) => {
+  const showAiInsight = async (team: Team) => {
     setInsightLoading(true);
     setAiInsightOpen(true);
 
     const group = groupsData.find((g) => g.teams.some((t) => t.id === team.id));
     const groupLetter = group?.id || 'A';
 
-    fetchTeamAiAnalysis(team.id, team.name, team.probability, groupLetter)
+    let idToken = '';
+    try {
+      if (auth.currentUser) {
+        idToken = await auth.currentUser.getIdToken();
+      }
+    } catch (e) {
+      console.warn('ID token fetch failed:', e);
+    }
+
+    fetchTeamAiAnalysis(team.id, team.name, team.probability, groupLetter, idToken)
       .then((text) => {
         setAiInsightText(text);
         setInsightLoading(false);
@@ -909,7 +918,7 @@ function RedesignedPredictionWizardContent() {
   const downloadImage = () => {
     if (!shareCardImage) return;
     const link = document.createElement('a');
-    link.download = `cupsyndicate_${userName || 'bracket'}.png`;
+    link.download = `kupatahmini_${userName || 'bracket'}.png`;
     link.href = shareCardImage;
     link.click();
   };
@@ -940,7 +949,7 @@ function RedesignedPredictionWizardContent() {
             <span className="text-2xl">🏆</span>
             <div>
               <h1 className="text-xl font-bold tracking-wider bg-gradient-to-r from-violet-400 via-pink-400 to-amber-300 bg-clip-text text-transparent">
-                CupSyndicate
+                KupaTahmini.com
               </h1>
               <p className="text-[10px] text-slate-400 font-medium">WORLD CUP 2026 PREDICTOR</p>
             </div>
@@ -989,7 +998,7 @@ function RedesignedPredictionWizardContent() {
             <div className="space-y-2 flex flex-col items-center">
               <Globe2 className="w-16 h-16 text-violet-400 animate-pulse drop-shadow-[0_0_15px_rgba(124,58,237,0.4)]" />
               <h2 className="text-3xl font-black tracking-tight text-white font-display bg-gradient-to-r from-violet-300 via-pink-300 to-amber-200 bg-clip-text text-transparent glow-text-violet">
-                CupSyndicate
+                KupaTahmini.com
               </h2>
               <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
                 Dünya Kupası 2026 turnuva ağacını grup aşamasından başlayarak tahmin et, rekabetçi PvP liglerinde zirveye oyna!
@@ -1032,20 +1041,12 @@ function RedesignedPredictionWizardContent() {
                   Profilime Git 🧑‍💻
                 </button>
               ) : (
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    onClick={() => handleLogin('google')}
-                    className="bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-white/15 hover:scale-[1.01] transition"
-                  >
-                    🌐 Google Giriş
-                  </button>
-                  <button
-                    onClick={() => handleLogin('apple')}
-                    className="bg-black/40 border border-white/10 hover:bg-black/60 text-white py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 hover:scale-[1.01] transition"
-                  >
-                     Apple Giriş
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleLogin('google')}
+                  className="w-full bg-white/5 hover:bg-white/10 text-white py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-white/15 hover:scale-[1.01] transition-all uppercase tracking-wider font-display"
+                >
+                  🌐 Google ile Giriş Yap / Üye Ol
+                </button>
               )}
             </div>
 
@@ -1313,20 +1314,12 @@ function RedesignedPredictionWizardContent() {
                 <span className="text-[9px] text-slate-500 font-bold uppercase block tracking-wider">Tahmin Özeti</span>
                 <span className="text-xs text-slate-300 font-medium">12 Grup ve 8 En İyi Üçüncü Seçildi.</span>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => handleLogin('google')}
-                  className="bg-white/5 hover:bg-white/10 text-white py-3.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-white/15 hover:scale-[1.01] transition"
-                >
-                  🌐 Google Giriş
-                </button>
-                <button
-                  onClick={() => handleLogin('apple')}
-                  className="bg-black/40 border border-white/10 hover:bg-black/60 text-white py-3.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 hover:scale-[1.01] transition"
-                >
-                   Apple Giriş
-                </button>
-              </div>
+              <button
+                onClick={() => handleLogin('google')}
+                className="w-full bg-white/5 hover:bg-white/10 text-white py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-white/15 hover:scale-[1.01] transition-all uppercase tracking-wider font-display"
+              >
+                🌐 Google ile Giriş Yap / Üye Ol
+              </button>
             </div>
 
             <button
@@ -2084,7 +2077,7 @@ function RedesignedPredictionWizardContent() {
                  rewardedAdPurpose === 'REMOVE_WATERMARK' ? 'Filigran Kaldırılıyor' : 'Maç İçi İhtimaller Açılıyor'}
               </h3>
               <p className="text-xs text-slate-400">
-                Premium üye olmayan kullanıcılarımız için bu özellik Google Reklamları ile finanse edilmektedir.
+                Bu özellik, platformun tamamen ücretsiz kalabilmesi ve sunucu maliyetlerinin karşılanması amacıyla Google Reklamları ile desteklenmektedir.
               </p>
             </div>
 
@@ -2167,7 +2160,7 @@ function RedesignedPredictionWizardContent() {
               <span className="text-xl">✨</span>
               <div>
                 <h3 className="text-sm font-bold text-white">Gemini AI Derin Eşleşme Analizi</h3>
-                <p className="text-[9px] text-violet-400 font-semibold tracking-wider uppercase">CupSyndicate AI Engine</p>
+                <p className="text-[9px] text-violet-400 font-semibold tracking-wider uppercase">KupaTahmini AI Engine</p>
               </div>
             </div>
 
@@ -2188,7 +2181,7 @@ function RedesignedPredictionWizardContent() {
 
             <div className="border-t border-slate-800 pt-3 flex items-center justify-between text-[9px] text-slate-500">
               <span>* Analizler olasılık verilerine dayanır.</span>
-              <span className="text-violet-400 font-bold">🤖 CUP SYNDICATE AI</span>
+              <span className="text-violet-400 font-bold">🤖 KUPA TAHMİNİ AI</span>
             </div>
           </div>
         </div>
@@ -2199,7 +2192,7 @@ function RedesignedPredictionWizardContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto scrollbar-none">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-white">📸 CupSyndicate Paylaşım Kartı</h3>
+              <h3 className="text-sm font-bold text-white">📸 KupaTahmini Paylaşım Kartı</h3>
               <button
                 onClick={() => setShowShareModal(false)}
                 className="text-slate-400 hover:text-white text-xs font-bold"
@@ -2214,7 +2207,7 @@ function RedesignedPredictionWizardContent() {
                 <div className="relative">
                   <img
                     src={shareCardImage}
-                    alt="CupSyndicate Kartı"
+                    alt="KupaTahmini Kartı"
                     className="w-full max-w-[300px] rounded-2xl border border-white/10 shadow-2xl"
                   />
                 </div>

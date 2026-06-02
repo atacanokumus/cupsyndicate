@@ -75,7 +75,7 @@ export default function InvitePage() {
                 Klan Daveti
               </h1>
               <p className="text-xs text-slate-400">
-                Bir arkadaşınız sizi CupSyndicate&apos;te bir klana davet etti!
+                Bir arkadaşınız sizi KupaTahmini.com&apos;da bir klana davet etti!
               </p>
             </div>
 

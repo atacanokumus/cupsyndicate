@@ -140,3 +140,19 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* AdSense Force Layout Constraints */
+.adsbygoogle-horizontal {
+  display: block !important;
+  width: 100% !important;
+  height: 50px !important;
+  max-height: 50px !important;
+  overflow: hidden !important;
+}
+
+.adsbygoogle-horizontal iframe {
+  height: 50px !important;
+  max-height: 50px !important;
+  overflow: hidden !important;
+}
+

@@ -1,7 +1,51 @@
 import { NextResponse } from 'next/server';
 
+async function verifyFirebaseToken(idToken: string): Promise<boolean> {
+  if (!idToken) return false;
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey) {
+    console.error('Firebase token verification error: NEXT_PUBLIC_FIREBASE_API_KEY is not configured in environment variables.');
+    return false;
+  }
+
+  try {
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      }
+    );
+    return res.ok;
+  } catch (err) {
+    console.error('Firebase token verification network/CORS error:', err);
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
   try {
+    // 1. Kimlik doğrulama başlığı kontrolü (Authorization: Bearer <idToken>)
+    const authHeader = request.headers.get('Authorization');
+    const idToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split('Bearer ')[1] : '';
+
+    if (!idToken) {
+      return NextResponse.json(
+        { error: 'Bu işlem için giriş yapılması zorunludur. Lütfen oturum açın.' },
+        { status: 401 }
+      );
+    }
+
+    // 2. Token doğruluğunu kontrol et
+    const isValid = await verifyFirebaseToken(idToken);
+    if (!isValid) {
+      return NextResponse.json(
+        { error: 'Geçersiz veya süresi dolmuş kullanıcı oturumu.' },
+        { status: 401 }
+      );
+    }
+
     const { teamId, teamName, probability, groupLetter } = await request.json();
 
     if (!teamId || !teamName) {

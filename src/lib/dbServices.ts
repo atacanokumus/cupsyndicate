@@ -15,7 +15,7 @@ import {
 import { db } from './firebaseConfig';
 import { UserProfile, UserPredictions, Company, Squad, SocialLeague } from '../types/firestore';
 
-const LOCAL_STORAGE_PRED_KEY = 'cupsyndicate_offline_predictions';
+const LOCAL_STORAGE_PRED_KEY = 'kupatahmini_offline_predictions';
 
 /**
  * 1. KULLANICI TAHMİNLERİNİ FİRESTORE'A KAYDETME
@@ -284,7 +284,7 @@ export const getSquadDetails = async (
         members.push({
           uid: memberUid,
           username: memberUid.startsWith('dummy') ? 'Test Kullanıcısı' : 'Kullanıcı',
-          email: 'kullanici@cupsyndicate.com',
+          email: 'kullanici@kupatahmini.com',
           avatarUrl: null,
           companyId: squadData.companyId,
           squadId: squadId,

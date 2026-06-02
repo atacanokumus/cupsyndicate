@@ -6,14 +6,21 @@ export async function fetchTeamAiAnalysis(
   teamId: string,
   teamName: string,
   probability: number,
-  groupLetter: string
+  groupLetter: string,
+  idToken?: string
 ): Promise<string> {
   try {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (idToken) {
+      headers['Authorization'] = `Bearer ${idToken}`;
+    }
+
     const response = await fetch('/api/ai', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         teamId,
         teamName,
