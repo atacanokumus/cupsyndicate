@@ -2269,8 +2269,8 @@ function RedesignedPredictionWizardContent() {
       )}
 
       {/* STICKY AD BANNER SLOT A */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/90 backdrop-blur-md border-t border-slate-900 py-1.5 px-4 shadow-2xl flex flex-col items-center justify-center">
-        <AdSenseWrapper slot="banner-slot-a" className="max-h-[60px] my-0" />
+      <div className="fixed bottom-0 left-0 right-0 h-[60px] max-h-[60px] overflow-hidden z-40 bg-slate-950/90 backdrop-blur-md border-t border-slate-900 px-4 shadow-2xl flex items-center justify-center">
+        <AdSenseWrapper slot="banner-slot-a" format="horizontal" responsive={false} className="h-[50px] max-h-[50px] my-0 overflow-hidden" />
       </div>
     </div>
   );

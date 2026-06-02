@@ -47,7 +47,7 @@ export default function AdSenseWrapper({
   }, [slot]);
 
   return (
-    <div className={`w-full overflow-hidden my-3 mx-auto max-w-full ${className}`}>
+    <div className={`w-full overflow-hidden mx-auto max-w-full ${format === 'horizontal' ? '' : 'my-3'} ${className}`}>
       {adFailed ? (
         <div className="glass-card border border-white/5 rounded-xl p-3 flex flex-col justify-center items-center gap-1.5 text-center min-h-[90px] relative overflow-hidden bg-slate-950/20">
           <div className="absolute top-1.5 left-2.5 text-[8px] text-slate-500 border border-slate-900 px-1 py-0.2 rounded font-bold uppercase tracking-wider">
@@ -63,7 +63,7 @@ export default function AdSenseWrapper({
       ) : (
         <ins
           className="adsbygoogle"
-          style={{ display: 'block' }}
+          style={{ display: 'block', height: format === 'horizontal' ? '50px' : 'auto', maxHeight: format === 'horizontal' ? '50px' : 'none' }}
           data-ad-client={clientId}
           data-ad-slot={slot}
           data-ad-format={format}
