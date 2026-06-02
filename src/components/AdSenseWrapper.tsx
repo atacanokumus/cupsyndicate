@@ -18,7 +18,23 @@ export default function AdSenseWrapper({
   const [adFailed, setAdFailed] = useState(false);
   const [adLoaded, setAdLoaded] = useState(false);
 
-  const clientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-3940256099942544';
+  const clientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-7838551368632112';
+
+  // Dynamically resolve slot ID from environment variables or use fallback
+  const getAdSlot = () => {
+    if (slot === 'banner-slot-a') {
+      return process.env.NEXT_PUBLIC_ADSENSE_SLOT_BANNER || 'banner-slot-a';
+    }
+    if (slot === 'rewarded-fallback-banner') {
+      return process.env.NEXT_PUBLIC_ADSENSE_SLOT_REWARDED_FALLBACK || 'rewarded-fallback-banner';
+    }
+    if (slot === 'interstitial-modal-slot') {
+      return process.env.NEXT_PUBLIC_ADSENSE_SLOT_MODAL || 'interstitial-modal-slot';
+    }
+    return slot;
+  };
+
+  const adSlot = getAdSlot();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -44,7 +60,7 @@ export default function AdSenseWrapper({
         setAdFailed(true);
       }
     }
-  }, [slot]);
+  }, [adSlot]);
 
   return (
     <div className={`w-full overflow-hidden mx-auto max-w-full ${format === 'horizontal' ? '' : 'my-3'} ${className}`}>
@@ -65,7 +81,7 @@ export default function AdSenseWrapper({
           className={`adsbygoogle ${format === 'horizontal' ? 'adsbygoogle-horizontal' : ''}`}
           style={{ display: 'block', height: format === 'horizontal' ? '50px' : 'auto', maxHeight: format === 'horizontal' ? '50px' : 'none' }}
           data-ad-client={clientId}
-          data-ad-slot={slot}
+          data-ad-slot={adSlot}
           data-ad-format={format}
           data-full-width-responsive={responsive ? 'true' : 'false'}
         />

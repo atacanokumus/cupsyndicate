@@ -1,0 +1,2 @@
+# Google AdSense yetkilendirme kaydı.
+google.com, pub-7838551368632112, DIRECT, f08c47fec0942fa0
