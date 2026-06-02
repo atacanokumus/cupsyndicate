@@ -162,7 +162,76 @@ const KNOCKOUT_MATCHES_CONFIG: KnockoutMatch[] = [
   { id: 104, homeSource: { type: 'match', value: 101 }, awaySource: { type: 'match', value: 102 }, homeLabel: 'Yarı Final 1 Galibi', awayLabel: 'Yarı Final 2 Galibi', nextMatchId: 0, isHomeInNext: false, round: 'FINAL' }
 ];
 
-export default function RedesignedPredictionWizard() {
+const FLAG_MAP: Record<string, string> = {
+  mexico: 'mx',
+  south_korea: 'kr',
+  czech_republic: 'cz',
+  south_africa: 'za',
+  switzerland: 'ch',
+  canada: 'ca',
+  bosnia: 'ba',
+  qatar: 'qa',
+  brazil: 'br',
+  morocco: 'ma',
+  scotland: 'gb-sct',
+  haiti: 'ht',
+  usa: 'us',
+  turkiye: 'tr',
+  australia: 'au',
+  paraguay: 'py',
+  germany: 'de',
+  ecuador: 'ec',
+  ivory_coast: 'ci',
+  curacao: 'cw',
+  netherlands: 'nl',
+  japan: 'jp',
+  sweden: 'se',
+  tunisia: 'tn',
+  belgium: 'be',
+  iran: 'ir',
+  egypt: 'eg',
+  new_zealand: 'nz',
+  spain: 'es',
+  uruguay: 'uy',
+  saudi_arabia: 'sa',
+  cape_verde: 'cv',
+  france: 'fr',
+  senegal: 'sn',
+  norway: 'no',
+  iraq: 'iq',
+  argentina: 'ar',
+  austria: 'at',
+  algeria: 'dz',
+  jordan: 'jo',
+  colombia: 'co',
+  portugal: 'pt',
+  dr_congo: 'cd',
+  uzbekistan: 'uz',
+  england: 'gb-eng',
+  croatia: 'hr',
+  panama: 'pa',
+  ghana: 'gh'
+};
+
+const TeamFlag = ({ teamId, fallbackEmoji, className = "w-5 h-3.5" }: { teamId: string; fallbackEmoji: string; className?: string }) => {
+  const [useFallback, setUseFallback] = useState(false);
+  const code = FLAG_MAP[teamId];
+
+  if (!code || useFallback) {
+    return <span className="text-lg leading-none select-none inline-block align-middle">{fallbackEmoji}</span>;
+  }
+
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${code}.png`}
+      alt=""
+      className={`${className} object-cover rounded-[2px] shadow-sm inline-block align-middle`}
+      onError={() => setUseFallback(true)}
+    />
+  );
+};
+
+function RedesignedPredictionWizardContent() {
   // --- DURUM YÖNETİMİ ---
   const [appState, setAppState] = useState<AppState>('LANDING');
   const searchParams = useSearchParams();
@@ -973,12 +1042,12 @@ export default function RedesignedPredictionWizard() {
                     <span className="text-lg font-bold text-white tracking-wide font-display">{group.name} Tahminleri</span>
                     <div className="flex gap-1.5 text-[9px] font-bold">
                       {pred.first && <span className="bg-yellow-500/10 text-yellow-300 border border-yellow-500/30 px-1.5 py-0.5 rounded">🥇 1.</span>}
-                      {pred.second && <span className="bg-slate-350/10 text-slate-300 border border-slate-350/30 px-1.5 py-0.5 rounded">🥈 2.</span>}
+                      {pred.second && <span className="bg-slate-300/10 text-slate-300 border border-slate-300/30 px-1.5 py-0.5 rounded">🥈 2.</span>}
                       {pred.third && <span className="bg-amber-700/10 text-amber-400 border border-amber-700/30 px-1.5 py-0.5 rounded">🥉 3.</span>}
                     </div>
                   </div>
 
-                  <p className="text-[10px] text-slate-450 leading-relaxed">
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
                     Sırasıyla tıklayarak grubun en iyi iki takımını (🥇1. ve 🥈2.) ve ardından en iyi 3. adayını (🥉3.) seçin.
                   </p>
 
@@ -1006,7 +1075,7 @@ export default function RedesignedPredictionWizard() {
 
                       let badge = null;
                       if (isFirst) badge = <span className="bg-yellow-500 text-slate-950 font-black px-1.5 py-0.5 rounded text-[10px] shadow-sm">🥇 1</span>;
-                      else if (isSecond) badge = <span className="bg-slate-350 text-slate-950 font-black px-1.5 py-0.5 rounded text-[10px] shadow-sm">🥈 2</span>;
+                      else if (isSecond) badge = <span className="bg-slate-300 text-slate-950 font-black px-1.5 py-0.5 rounded text-[10px] shadow-sm">🥈 2</span>;
                       else if (isThird) badge = <span className="bg-amber-700 text-white font-black px-1.5 py-0.5 rounded text-[10px] shadow-sm">🥉 3</span>;
 
                       return (
@@ -1022,7 +1091,9 @@ export default function RedesignedPredictionWizard() {
                             onClick={() => handleTeamClick(group.id, team.id)}
                           >
                             <div className="flex items-center gap-2.5">
-                              <span className="text-xl filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">{team.flag}</span>
+                              <span className="filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center">
+                                <TeamFlag teamId={team.id} fallbackEmoji={team.flag} className="w-6 h-4" />
+                              </span>
                               <div className="flex flex-col">
                                 <span className="text-xs font-semibold">{team.name}</span>
                                 {isGroupUnlocked && normalizedProbs ? (
@@ -1045,7 +1116,7 @@ export default function RedesignedPredictionWizard() {
                                   e.stopPropagation();
                                   triggerAiInsight(team);
                                 }}
-                                className="p-1 px-2 rounded-lg bg-violet-900/40 hover:bg-violet-850 text-violet-300 hover:text-white transition text-[9px] flex items-center gap-1 border border-violet-750/30 font-bold"
+                                className="p-1 px-2 rounded-lg bg-violet-900/40 hover:bg-violet-800 text-violet-300 hover:text-white transition text-[9px] flex items-center gap-1 border border-violet-700/30 font-bold"
                               >
                                 ✨ AI
                               </button>
@@ -1135,11 +1206,13 @@ export default function RedesignedPredictionWizard() {
                     className={`p-3 rounded-xl border text-left text-xs transition-all relative flex flex-col justify-between min-h-[90px] ${
                       isSelected
                         ? 'bg-amber-600/20 border-amber-500 text-amber-200 font-semibold shadow-glow-amber scale-[1.01]'
-                        : 'glass-card-hover border-white/5 bg-slate-950/20 hover:bg-slate-950/40 text-slate-350'
+                        : 'glass-card-hover border-white/5 bg-slate-950/20 hover:bg-slate-950/40 text-slate-300'
                     }`}
                   >
                     <div className="absolute top-1.5 right-2 text-[9px] text-slate-500 font-bold">{g.id} Grubu</div>
-                    <span className="text-xl mt-1 filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">{thirdTeam.flag}</span>
+                    <span className="filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] mt-1 flex items-center">
+                      <TeamFlag teamId={thirdTeam.id} fallbackEmoji={thirdTeam.flag} className="w-6 h-4" />
+                    </span>
                     <span className="truncate block mt-1.5 font-bold text-slate-200">{thirdTeam.name}</span>
                   </button>
                 );
@@ -1247,7 +1320,7 @@ export default function RedesignedPredictionWizard() {
                 <span className="text-xs text-indigo-400 font-bold uppercase tracking-widest block font-display">
                   {getRoundLabel(activeMatchConfig.round, activeMatchConfig.id)}
                 </span>
-                <span className="text-[10px] text-slate-450">Kazanan takımı seçerek bir sonraki adıma ilerleyin.</span>
+                <span className="text-[10px] text-slate-400">Kazanan takımı seçerek bir sonraki adıma ilerleyin.</span>
               </div>
 
               {/* EV SAHİBİ VE DEPLASMAN SEÇENEKLERİ */}
@@ -1262,7 +1335,9 @@ export default function RedesignedPredictionWizard() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">{activeHome.flag}</span>
+                      <span className="filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center">
+                        <TeamFlag teamId={activeHome.id} fallbackEmoji={activeHome.flag} className="w-7 h-5" />
+                      </span>
                       <span className="text-sm font-semibold">{activeHome.name}</span>
                     </div>
                     {activeWinnerId === activeHome.id ? (
@@ -1291,7 +1366,9 @@ export default function RedesignedPredictionWizard() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">{activeAway.flag}</span>
+                      <span className="filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center">
+                        <TeamFlag teamId={activeAway.id} fallbackEmoji={activeAway.flag} className="w-7 h-5" />
+                      </span>
                       <span className="text-sm font-semibold">{activeAway.name}</span>
                     </div>
                     {activeWinnerId === activeAway.id ? (
@@ -1370,7 +1447,9 @@ export default function RedesignedPredictionWizard() {
               <div>
                 <span className="block text-[8px] text-slate-500 font-bold uppercase tracking-wider">ŞAMPİYON TAHMİNİ</span>
                 <div className="mt-1.5 flex flex-col items-center gap-1">
-                  <span className="text-4xl filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.3)]">{getChampion()?.flag}</span>
+                  <span className="filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.3)] min-h-[32px] flex items-center justify-center">
+                    <TeamFlag teamId={getChampion()?.id || ''} fallbackEmoji={getChampion()?.flag || '🏆'} className="w-12 h-8" />
+                  </span>
                   <span className="text-xs font-bold text-amber-400">{getChampion()?.name}</span>
                 </div>
               </div>
@@ -1378,7 +1457,9 @@ export default function RedesignedPredictionWizard() {
               <div>
                 <span className="block text-[8px] text-slate-500 font-bold uppercase tracking-wider">ÜÇÜNCÜ TAHMİNİ</span>
                 <div className="mt-1.5 flex flex-col items-center gap-1">
-                  <span className="text-4xl filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.3)]">{getThirdPlace()?.flag}</span>
+                  <span className="filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.3)] min-h-[32px] flex items-center justify-center">
+                    <TeamFlag teamId={getThirdPlace()?.id || ''} fallbackEmoji={getThirdPlace()?.flag || '🥉'} className="w-12 h-8" />
+                  </span>
                   <span className="text-xs font-bold text-slate-300">{getThirdPlace()?.name}</span>
                 </div>
               </div>
@@ -1429,7 +1510,7 @@ export default function RedesignedPredictionWizard() {
                         navigator.clipboard.writeText(userSquad.squadId);
                         alert(`Davet kodu kopyalandı: ${userSquad.squadId}`);
                       }}
-                      className="w-full bg-slate-900 hover:bg-slate-850 border border-white/5 text-slate-350 text-[10px] py-1.5 rounded-lg text-center font-bold transition"
+                      className="w-full bg-slate-900 hover:bg-slate-850 border border-white/5 text-slate-300 text-[10px] py-1.5 rounded-lg text-center font-bold transition"
                     >
                       🔗 Sadece Kodu Kopyala: {userSquad.squadId} (Üye: {squadMembers.length}/20)
                     </button>
@@ -1445,7 +1526,7 @@ export default function RedesignedPredictionWizard() {
                             <span className="text-[10px] text-slate-500 font-mono font-bold">#{index + 1}</span>
                             <span className="font-semibold text-slate-200">{member.username}</span>
                           </div>
-                          <span className="font-mono text-violet-450 font-bold">{member.totalPoints} Puan</span>
+                          <span className="font-mono text-violet-400 font-bold">{member.totalPoints} Puan</span>
                         </div>
                       ))}
                     </div>
@@ -1512,7 +1593,7 @@ export default function RedesignedPredictionWizard() {
                       <div className="flex gap-2 pt-1.5">
                         <button
                           onClick={() => setShowCreateSquad(false)}
-                          className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-350 text-[10px] font-bold py-2 rounded-xl transition"
+                          className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] font-bold py-2 rounded-xl transition"
                         >
                           İptal
                         </button>
@@ -1543,7 +1624,7 @@ export default function RedesignedPredictionWizard() {
               </button>
               <button
                 onClick={() => setShowShareModal(true)}
-                className="w-full bg-gradient-to-r from-violet-900/40 to-indigo-900/40 border border-violet-850/50 hover:border-violet-700/50 text-violet-200 hover:scale-[1.01] py-3.5 rounded-xl text-xs font-bold transition-all font-display shadow-lg shadow-violet-950/20"
+                className="w-full bg-gradient-to-r from-violet-900/40 to-indigo-900/40 border border-violet-800/50 hover:border-violet-700/50 text-violet-200 hover:scale-[1.01] py-3.5 rounded-xl text-xs font-bold transition-all font-display shadow-lg shadow-violet-950/20"
               >
                 📸 Brackets Kartı Oluştur & Paylaş
               </button>
@@ -1758,7 +1839,7 @@ export default function RedesignedPredictionWizard() {
 
             <button
               onClick={() => setRewardedAdOpen(false)}
-              className="w-full bg-slate-950 hover:bg-slate-900 text-slate-450 border border-slate-800 py-3 rounded-xl text-xs font-semibold transition"
+              className="w-full bg-slate-950 hover:bg-slate-900 text-slate-400 border border-slate-800 py-3 rounded-xl text-xs font-semibold transition"
             >
               Vazgeç / Kapat
             </button>
@@ -1779,7 +1860,7 @@ export default function RedesignedPredictionWizard() {
               </span>
             </div>
 
-            <div className="bg-slate-900/40 border border-slate-850 p-8 rounded-xl min-h-[250px] flex flex-col justify-center items-center gap-4 text-center">
+            <div className="bg-slate-900/40 border border-slate-800 p-8 rounded-xl min-h-[250px] flex flex-col justify-center items-center gap-4 text-center">
               <span className="text-4xl text-slate-700 animate-bounce">📱</span>
               <div>
                 <p className="text-xs text-slate-500 font-semibold uppercase">Google AdSense (Slot B - Interstitial)</p>
@@ -1833,13 +1914,13 @@ export default function RedesignedPredictionWizard() {
                   <p className="text-[10px] text-slate-500">Akıllı eşleşme verisi analiz ediliyor...</p>
                 </div>
               ) : (
-                <p className="text-xs text-slate-350 leading-relaxed whitespace-pre-line">
+                <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
                   {aiInsightText}
                 </p>
               )}
             </div>
 
-            <div className="border-t border-slate-850 pt-3 flex items-center justify-between text-[9px] text-slate-500">
+            <div className="border-t border-slate-800 pt-3 flex items-center justify-between text-[9px] text-slate-500">
               <span>* Analizler olasılık verilerine dayanır.</span>
               <span className="text-violet-400 font-bold">🤖 CUP SYNDICATE AI</span>
             </div>
@@ -1893,7 +1974,7 @@ export default function RedesignedPredictionWizard() {
                   📺 Reklam İzle & Filigranı Kaldır
                 </button>
               ) : (
-                <div className="w-full text-center bg-emerald-950/30 border border-emerald-800/40 p-2.5 rounded-xl text-emerald-450 text-[10px] font-bold">
+                <div className="w-full text-center bg-emerald-950/30 border border-emerald-800/40 p-2.5 rounded-xl text-emerald-400 text-[10px] font-bold">
                   ✨ Kart onaylandı! Filigran başarıyla kaldırıldı.
                 </div>
               )}
@@ -1926,5 +2007,18 @@ export default function RedesignedPredictionWizard() {
         <AdSenseWrapper slot="banner-slot-a" className="max-h-[60px] my-0" />
       </div>
     </div>
+  );
+}
+
+export default function RedesignedPredictionWizard() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-[#080b11] text-white flex flex-col items-center justify-center gap-4">
+        <div className="w-10 h-10 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Yükleniyor...</p>
+      </div>
+    }>
+      <RedesignedPredictionWizardContent />
+    </React.Suspense>
   );
 }
