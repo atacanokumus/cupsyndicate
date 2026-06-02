@@ -422,6 +422,16 @@ function RedesignedPredictionWizardContent() {
     }
   };
 
+  const handleBackFromProfile = () => {
+    if (Object.keys(knockoutPredictions).length > 0) {
+      setAppState('SUMMARY');
+    } else if (Object.keys(groupPredictions).length > 0) {
+      setAppState('THIRDS');
+    } else {
+      setAppState('LANDING');
+    }
+  };
+
   // --- GRUP SEÇİMLERİ ---
   const handleTeamClick = (groupId: string, teamId: string) => {
     if (isPredictionsLocked) return;
@@ -933,12 +943,21 @@ function RedesignedPredictionWizardContent() {
             </span>
 
             {isUserLoggedIn && (
-              <button
-                onClick={handleLogoutClick}
-                className="bg-rose-950/60 border border-rose-800/40 text-rose-300 px-3 py-1.5 rounded-md text-xs hover:bg-rose-900/60 transition"
-              >
-                Çıkış
-              </button>
+              <>
+                <button
+                  onClick={() => setAppState('PROFILE')}
+                  className="bg-violet-950/60 border border-violet-800/40 text-violet-300 px-3 py-1.5 rounded-md text-xs hover:bg-violet-900/60 hover:text-white transition flex items-center gap-1 font-bold"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  Profilim
+                </button>
+                <button
+                  onClick={handleLogoutClick}
+                  className="bg-rose-950/60 border border-rose-800/40 text-rose-300 px-3 py-1.5 rounded-md text-xs hover:bg-rose-900/60 transition"
+                >
+                  Çıkış
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -1694,6 +1713,7 @@ function RedesignedPredictionWizardContent() {
         )}
 
         {/* 6. PROFILE STAGE (KULLANICI PROFİLİ VE TAHMİNLER) */}
+        {/* 6. PROFILE STAGE (KULLANICI PROFİLİ VE TAHMİNLER) */}
         {appState === 'PROFILE' && (
           <motion.div 
             key="profile"
@@ -1703,11 +1723,12 @@ function RedesignedPredictionWizardContent() {
             exit="exit"
             className="glass-card border border-white/10 rounded-3xl p-6 shadow-2xl space-y-6"
           >
+            {/* Profil Genel Bilgi */}
             <div className="flex items-center gap-4 border-b border-white/10 pb-4">
               <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-violet-600 to-amber-500 flex items-center justify-center text-2xl shadow-lg border-2 border-white/20">
                 <User className="w-8 h-8 text-white" />
               </div>
-              <div>
+              <div className="text-left">
                 <h3 className="text-xl font-bold text-white font-display tracking-wider">
                   {userName}
                 </h3>
@@ -1715,37 +1736,210 @@ function RedesignedPredictionWizardContent() {
               </div>
             </div>
 
-            <div className="bg-slate-950/40 rounded-2xl p-4 border border-white/5 space-y-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-400 font-medium">Klan / Kadro:</span>
-                <span className="text-white font-bold tracking-widest bg-violet-900/30 px-2 py-1 rounded border border-violet-500/20">
-                  {userSquad ? userSquad.name : 'Yok'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-slate-400 font-medium">Tahmin Durumu:</span>
-                <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  {Object.keys(groupPredictions).length > 0 ? <><CheckCircle2 className="w-4 h-4"/> Aktif Tahminler Var</> : 'Henüz Tahmin Yok'}
-                </span>
-              </div>
+            {/* Turnuva Tahminlerim Özeti */}
+            <div className="bg-slate-950/40 border border-white/5 rounded-2xl p-5 text-left space-y-4">
+              <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-2">
+                🏆 Turnuva Tahminleriniz
+              </h4>
+              {Object.keys(groupPredictions).length > 0 ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 text-center">
+                    <div className="bg-slate-900/60 p-3 rounded-xl border border-white/5 flex flex-col items-center gap-1.5">
+                      <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">Şampiyon</span>
+                      <span className="filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
+                        <TeamFlag teamId={getChampion()?.id || ''} fallbackEmoji={getChampion()?.flag || '🏆'} className="w-10 h-6.5" />
+                      </span>
+                      <span className="text-xs font-bold text-amber-400 truncate max-w-full">
+                        {getChampion()?.name || '?'}
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-900/60 p-3 rounded-xl border border-white/5 flex flex-col items-center gap-1.5">
+                      <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">Üçüncü</span>
+                      <span className="filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
+                        <TeamFlag teamId={getThirdPlace()?.id || ''} fallbackEmoji={getThirdPlace()?.flag || '🥉'} className="w-10 h-6.5" />
+                      </span>
+                      <span className="text-xs font-bold text-slate-350 truncate max-w-full">
+                        {getThirdPlace()?.name || '?'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setAppState('GROUPS');
+                        setCurrentGroupIndex(0);
+                      }}
+                      className="flex-1 bg-violet-900/30 hover:bg-violet-900/50 border border-violet-500/20 text-violet-300 font-bold py-2 rounded-xl text-[10px] transition uppercase tracking-wider font-display"
+                    >
+                      Grupları Düzenle 📝
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (Object.keys(knockoutPredictions).length > 0) {
+                          setAppState('SUMMARY');
+                        } else {
+                          setAppState('KNOCKOUTS');
+                          setCurrentMatchIndex(0);
+                        }
+                      }}
+                      className="flex-1 bg-indigo-900/30 hover:bg-indigo-900/50 border border-indigo-500/20 text-indigo-300 font-bold py-2 rounded-xl text-[10px] transition uppercase tracking-wider font-display"
+                    >
+                      Elemeleri Düzenle 🏆
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 space-y-3">
+                  <p className="text-xs text-slate-500">Henüz bir tahmin kaydınız bulunmuyor.</p>
+                  <button
+                    onClick={() => {
+                      setAppState('GROUPS');
+                      setCurrentGroupIndex(0);
+                    }}
+                    className="bg-gradient-to-r from-violet-600 to-indigo-650 hover:from-violet-500 hover:to-indigo-550 text-white font-bold px-4 py-2 rounded-xl text-xs transition"
+                  >
+                    Hemen Tahmin Yapmaya Başla 🚀
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="space-y-3 pt-4">
-              <button
-                onClick={() => setAppState('GROUPS')}
-                className="w-full bg-gradient-to-r from-violet-600 to-indigo-650 hover:from-violet-500 hover:to-indigo-550 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-violet-900/20 hover:shadow-violet-900/30 hover:scale-[1.01] transition-all text-xs tracking-wider uppercase font-display"
-              >
-                Grup Tahminlerimi Düzenle 📝
-              </button>
-              
-              {Object.keys(knockoutPredictions).length > 0 && (
-                <button
-                  onClick={() => setAppState('SUMMARY')}
-                  className="w-full bg-slate-800 hover:bg-slate-700 border border-white/10 text-white font-bold py-3.5 rounded-xl transition text-xs shadow-md tracking-wider uppercase font-display"
-                >
-                  Tahmin Özetimi Görüntüle 🏆
-                </button>
+            {/* PVP KADRO YÖNETİMİ PANELİ */}
+            <div className="bg-slate-950/40 border border-white/5 rounded-2xl p-5 text-left space-y-4">
+              <h4 className="text-sm font-bold text-slate-100 flex items-center gap-2 border-b border-white/5 pb-2">
+                ⚔️ PvP Kadronuz ve Klanınız
+              </h4>
+
+              {userSquad ? (
+                // Kadro Mevcutsa Üyeleri ve Liderlik Tablosunu Göster
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center bg-violet-950/20 border border-violet-900/30 p-3 rounded-xl">
+                    <div>
+                      <span className="block text-[8px] text-violet-400 font-bold uppercase tracking-wider">AKTİF KADRONUZ</span>
+                      <span className="text-xs font-bold text-white">{userSquad.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="block text-[8px] text-slate-500 font-bold uppercase">DAVET KODU</span>
+                      <span className="text-xs font-mono font-bold text-amber-400">{userSquad.squadId}</span>
+                    </div>
+                  </div>
+
+                  {/* Davet Linki Kopyalama Butonları */}
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        const link = `${window.location.origin}/invite/${userSquad.squadId}`;
+                        navigator.clipboard.writeText(link);
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 3000);
+                      }}
+                      className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-550 text-white text-[10px] py-2 rounded-xl text-center font-bold transition shadow-md flex items-center justify-center gap-1.5"
+                    >
+                      {linkCopied ? '✅ Davet Linki Kopyalandı!' : '📎 Davet Linkini Kopyala & Paylaş'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(userSquad.squadId);
+                        alert(`Davet kodu kopyalandı: ${userSquad.squadId}`);
+                      }}
+                      className="w-full bg-slate-900 hover:bg-slate-850 border border-white/5 text-slate-300 text-[10px] py-1.5 rounded-lg text-center font-bold transition"
+                    >
+                      🔗 Sadece Kodu Kopyala: {userSquad.squadId} (Üye: {squadMembers.length}/20)
+                    </button>
+                  </div>
+
+                  {/* Kadro Liderlik Sıralaması */}
+                  <div className="space-y-1.5 mt-2">
+                    <span className="text-[9px] text-slate-500 font-bold uppercase block tracking-wider">KADRO SIRALAMASI</span>
+                    <div className="max-h-40 overflow-y-auto space-y-1 scrollbar-none">
+                      {squadMembers.map((member, index) => (
+                        <div key={member.uid} className="flex justify-between items-center p-2 rounded bg-slate-900/40 text-xs border border-white/3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-500 font-mono font-bold">#{index + 1}</span>
+                            <span className="font-semibold text-slate-200">{member.username}</span>
+                          </div>
+                          <span className="font-mono text-violet-400 font-bold">{member.totalPoints} Puan</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Kadro Yoksa Katılma / Oluşturma Seçeneği Sun
+                <div className="space-y-3">
+                  {!showCreateSquad ? (
+                    <>
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        Arkadaş grubunuzla veya klanınızla 20 kişilik özel liglerde yarışmak için davet kodu girin veya yeni bir kadro kurun.
+                      </p>
+                      
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Davet Kodu Girin"
+                          value={squadInput}
+                          onChange={(e) => setSquadInput(e.target.value.toUpperCase())}
+                          className="flex-1 bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-center tracking-wider text-white focus:outline-none focus:border-violet-500"
+                        />
+                        <button
+                          disabled={squadJoinLoading}
+                          onClick={handleJoinSquad}
+                          className="bg-violet-650 hover:bg-violet-500 text-white text-[11px] font-bold px-4 rounded-xl transition"
+                        >
+                          Katıl
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setShowCreateSquad(true)}
+                        className="w-full bg-white/5 hover:bg-white/10 text-white text-[10px] py-2 rounded-xl text-center border border-white/10 font-bold transition"
+                      >
+                        ➕ Yeni PvP Kadrosu/Klan Oluşturun
+                      </button>
+                    </>
+                  ) : (
+                    // Kadro Oluşturma Formu
+                    <div className="space-y-2.5">
+                      <div>
+                        <label className="block text-[8px] text-slate-400 font-bold uppercase mb-1">Klan Adı</label>
+                        <input
+                          type="text"
+                          placeholder="Örn: A Takımı"
+                          value={newSquadName}
+                          onChange={(e) => setNewSquadName(e.target.value)}
+                          className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-violet-500"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-1.5">
+                        <button
+                          onClick={() => setShowCreateSquad(false)}
+                          className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-350 text-[10px] font-bold py-2 rounded-xl transition"
+                        >
+                          İptal
+                        </button>
+                        <button
+                          onClick={handleCreateSquad}
+                          className="flex-1 bg-violet-650 hover:bg-violet-500 text-white text-[10px] font-bold py-2 rounded-xl transition"
+                        >
+                          Kadro Kur 🚀
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={handleBackFromProfile}
+                className="w-full bg-slate-900 hover:bg-slate-800 border border-white/5 text-slate-300 font-bold py-3 rounded-xl text-xs hover:scale-[0.98] transition-all"
+              >
+                ← Ana Sayfaya / Tahminlere Dön
+              </button>
             </div>
           </motion.div>
         )}
