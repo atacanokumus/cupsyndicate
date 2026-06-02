@@ -240,7 +240,7 @@ function RedesignedPredictionWizardContent() {
   const [inviteCode, setInviteCode] = useState<string>('');
   const [isWatermarkRemoved, setIsWatermarkRemoved] = useState<boolean>(false);
   const [shareCardImage, setShareCardImage] = useState<string>('');
-  const [rewardedAdPurpose, setRewardedAdPurpose] = useState<'AI_INSIGHT' | 'REMOVE_WATERMARK' | 'GROUP_UNLOCK'>('AI_INSIGHT');
+  const [rewardedAdPurpose, setRewardedAdPurpose] = useState<'AI_INSIGHT' | 'REMOVE_WATERMARK' | 'GROUP_UNLOCK' | 'MATCH_UNLOCK'>('AI_INSIGHT');
   const [linkCopied, setLinkCopied] = useState<boolean>(false);
   
   // B2B Kadro Yönetimi State'leri
@@ -295,7 +295,9 @@ function RedesignedPredictionWizardContent() {
   // Klan Tahmin İstatistikleri ve Grup İhtimal Kilidi
   const [squadPredictionStats, setSquadPredictionStats] = useState<any>(null);
   const [unlockedGroups, setUnlockedGroups] = useState<Set<string>>(new Set());
+  const [unlockedMatches, setUnlockedMatches] = useState<Set<number>>(new Set());
   const [adRewardGroupId, setAdRewardGroupId] = useState<string | null>(null);
+  const [adRewardMatchId, setAdRewardMatchId] = useState<number | null>(null);
   const [insightLoading, setInsightLoading] = useState<boolean>(false);
 
   // Paylaşım Modal
@@ -453,6 +455,7 @@ function RedesignedPredictionWizardContent() {
       ...groupPredictions,
       [groupId]: next,
     });
+    setKnockoutPredictions({});
 
     if (selectedThirdPlaceUids.includes(teamId)) {
       setSelectedThirdPlaceUids(selectedThirdPlaceUids.filter((id) => id !== teamId));
@@ -498,6 +501,7 @@ function RedesignedPredictionWizardContent() {
       }
       setSelectedThirdPlaceUids([...selectedThirdPlaceUids, teamId]);
     }
+    setKnockoutPredictions({});
   };
 
   // --- GRUPLARDAN ELEMEYE GEÇİŞ (ZORUNLU KAYIT KONTROLÜ VE INTERSTITIAL REKLAM) ---
@@ -537,6 +541,18 @@ function RedesignedPredictionWizardContent() {
   });
 
   const matchedThirdPlaces = matchThirdPlaceTeams(activeThirdPlaceMap);
+
+  const getMatchRelativeProbabilities = (
+    home: Team | null,
+    away: Team | null
+  ): { homePct: number; awayPct: number } => {
+    if (!home || !away) return { homePct: 50, awayPct: 50 };
+    const sum = home.probability + away.probability;
+    if (sum === 0) return { homePct: 50, awayPct: 50 };
+    const homePct = Math.round((home.probability / sum) * 100);
+    const awayPct = 100 - homePct;
+    return { homePct, awayPct };
+  };
 
   const getMatchTeams = (
     match: KnockoutMatch
@@ -661,6 +677,13 @@ function RedesignedPredictionWizardContent() {
     setRewardedAdOpen(true);
   };
 
+  const triggerMatchUnlock = (matchId: number) => {
+    setAdRewardMatchId(matchId);
+    setRewardedAdPurpose('MATCH_UNLOCK');
+    setRewardedCountdown(15);
+    setRewardedAdOpen(true);
+  };
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (rewardedAdOpen && rewardedCountdown > 0) {
@@ -675,10 +698,12 @@ function RedesignedPredictionWizardContent() {
         alert('Tebrikler! Ödüllü reklamı başarıyla izlediniz. Paylaşım kartınızdaki filigran kaldırıldı!');
       } else if (rewardedAdPurpose === 'GROUP_UNLOCK' && adRewardGroupId) {
         setUnlockedGroups(prev => { const next = new Set(Array.from(prev)); next.add(adRewardGroupId); return next; });
+      } else if (rewardedAdPurpose === 'MATCH_UNLOCK' && adRewardMatchId !== null) {
+        setUnlockedMatches(prev => { const next = new Set(Array.from(prev)); next.add(adRewardMatchId); return next; });
       }
     }
     return () => clearTimeout(timer);
-  }, [rewardedAdOpen, rewardedCountdown, rewardedAdPurpose, adRewardTeamId, adRewardGroupId]);
+  }, [rewardedAdOpen, rewardedCountdown, rewardedAdPurpose, adRewardTeamId, adRewardGroupId, adRewardMatchId]);
 
   const showAiInsight = (team: Team) => {
     setInsightLoading(true);
@@ -1096,13 +1121,9 @@ function RedesignedPredictionWizardContent() {
                               </span>
                               <div className="flex flex-col">
                                 <span className="text-xs font-semibold">{team.name}</span>
-                                {isGroupUnlocked && normalizedProbs ? (
+                                {isGroupUnlocked && normalizedProbs && (
                                   <span className="text-[9px] text-amber-400 font-mono font-bold">
-                                    Grup İhtimali: %{normalizedProbs.get(team.id)}
-                                  </span>
-                                ) : (
-                                  <span className="text-[9px] text-slate-500 font-mono">
-                                    Turnuva: %{team.probability}
+                                    Gruptan Çıkma İhtimali: %{normalizedProbs.get(team.id)}
                                   </span>
                                 )}
                               </div>
@@ -1290,139 +1311,170 @@ function RedesignedPredictionWizardContent() {
         )}
 
         {/* 5. KNOCKOUTS STAGE (MAÇ MAÇ TAHMİN KARTI AKIŞI) */}
-        {appState === 'KNOCKOUTS' && activeMatchConfig && (
-          <motion.div 
-            key={`knockout-${currentMatchIndex}`}
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="space-y-6"
-          >
-            {/* MAÇ İLERLEME SAYACI */}
-            <div className="glass-card border border-white/5 p-4 rounded-2xl space-y-2 shadow-lg">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="text-indigo-400 font-display uppercase tracking-wider">Eleme Tahmin Akışı</span>
-                <span className="text-slate-400 font-mono">{currentMatchIndex + 1} / 32 Maç</span>
-              </div>
-              <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-500 transition-all duration-300"
-                  style={{ width: `${((currentMatchIndex + 1) / 32) * 100}%` }}
-                />
-              </div>
-            </div>
+        {/* 5. KNOCKOUTS STAGE (MAÇ MAÇ TAHMİN KARTI AKIŞI) */}
+        {appState === 'KNOCKOUTS' && activeMatchConfig && (() => {
+          const isMatchUnlocked = unlockedMatches.has(activeMatchConfig.id);
+          const relativeProbs = getMatchRelativeProbabilities(activeHome, activeAway);
 
-            {/* TEK MAÇ KARTI */}
-            <div className="glass-card border border-white/10 rounded-3xl p-6 shadow-2xl space-y-6">
-              
-              <div className="text-center space-y-1">
-                <span className="text-xs text-indigo-400 font-bold uppercase tracking-widest block font-display">
-                  {getRoundLabel(activeMatchConfig.round, activeMatchConfig.id)}
-                </span>
-                <span className="text-[10px] text-slate-400">Kazanan takımı seçerek bir sonraki adıma ilerleyin.</span>
+          return (
+            <motion.div 
+              key={`knockout-${currentMatchIndex}`}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="space-y-6"
+            >
+              {/* MAÇ İLERLEME SAYACI */}
+              <div className="glass-card border border-white/5 p-4 rounded-2xl space-y-2 shadow-lg">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-indigo-400 font-display uppercase tracking-wider">Eleme Tahmin Akışı</span>
+                  <span className="text-slate-400 font-mono">{currentMatchIndex + 1} / 32 Maç</span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-violet-500 transition-all duration-300"
+                    style={{ width: `${((currentMatchIndex + 1) / 32) * 100}%` }}
+                  />
+                </div>
               </div>
 
-              {/* EV SAHİBİ VE DEPLASMAN SEÇENEKLERİ */}
-              <div className="space-y-3">
-                {activeHome ? (
+              {/* TEK MAÇ KARTI */}
+              <div className="glass-card border border-white/10 rounded-3xl p-6 shadow-2xl space-y-6">
+                
+                <div className="text-center space-y-1">
+                  <span className="text-xs text-indigo-400 font-bold uppercase tracking-widest block font-display">
+                    {getRoundLabel(activeMatchConfig.round, activeMatchConfig.id)}
+                  </span>
+                  <span className="text-[10px] text-slate-400">Kazanan takımı seçerek bir sonraki adıma ilerleyin.</span>
+                </div>
+
+                {/* MAÇ İHTİMAL KİLİT BUTONU */}
+                {!isMatchUnlocked ? (
                   <button
-                    onClick={() => handleSelectWinner(activeMatchConfig.id, activeHome.id)}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-300 text-left ${
-                      activeWinnerId === activeHome.id
-                        ? 'bg-indigo-650/20 border-indigo-500 text-white font-bold scale-[1.01] shadow-glow-violet'
-                        : 'glass-card-hover border-white/5 bg-slate-950/20 hover:bg-slate-950/40 text-slate-300'
-                    }`}
+                    type="button"
+                    onClick={() => triggerMatchUnlock(activeMatchConfig.id)}
+                    className="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl bg-gradient-to-r from-amber-950/40 to-orange-950/40 border border-amber-700/30 text-amber-400 text-[10px] font-bold hover:from-amber-950/60 hover:to-orange-950/60 transition animate-pulse"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center">
-                        <TeamFlag teamId={activeHome.id} fallbackEmoji={activeHome.flag} className="w-7 h-5" />
-                      </span>
-                      <span className="text-sm font-semibold">{activeHome.name}</span>
-                    </div>
-                    {activeWinnerId === activeHome.id ? (
-                      <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 font-bold">
-                        Seçildi ✓
-                      </span>
-                    ) : (
-                      <span className="text-[9px] text-slate-500 font-mono">Kazanma: %{activeHome.probability}</span>
-                    )}
+                    🔒 Maç İçi Kazanma İhtimallerini Görmek İçin Reklam İzle
                   </button>
                 ) : (
-                  <div className="w-full flex items-center p-4 rounded-xl border border-dashed border-white/5 bg-slate-950/10 text-slate-500 text-xs italic">
-                    ⏳ {activeMatchConfig.homeLabel} bekleniyor...
+                  <div className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-emerald-950/20 border border-emerald-800/30 text-[10px] text-emerald-400 font-bold">
+                    ✅ Eşleşme ihtimalleri açık — ihtimaller her takımın altında gösteriliyor
                   </div>
                 )}
 
-                <div className="text-center text-[10px] text-slate-500 font-bold tracking-wider font-display">VS</div>
+                {/* EV SAHİBİ VE DEPLASMAN SEÇENEKLERİ */}
+                <div className="space-y-3">
+                  {activeHome ? (
+                    <button
+                      onClick={() => handleSelectWinner(activeMatchConfig.id, activeHome.id)}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-300 text-left ${
+                        activeWinnerId === activeHome.id
+                          ? 'bg-indigo-650/20 border-indigo-500 text-white font-bold scale-[1.01] shadow-glow-violet'
+                          : 'glass-card-hover border-white/5 bg-slate-950/20 hover:bg-slate-950/40 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center">
+                          <TeamFlag teamId={activeHome.id} fallbackEmoji={activeHome.flag} className="w-7 h-5" />
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold">{activeHome.name}</span>
+                          {isMatchUnlocked && (
+                            <span className="text-[9px] text-amber-400 font-mono font-bold">
+                              Tur Atlama İhtimali: %{relativeProbs.homePct}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {activeWinnerId === activeHome.id && (
+                        <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 font-bold">
+                          Seçildi ✓
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="w-full flex items-center p-4 rounded-xl border border-dashed border-white/5 bg-slate-950/10 text-slate-500 text-xs italic">
+                      ⏳ {activeMatchConfig.homeLabel} bekleniyor...
+                    </div>
+                  )}
 
-                {activeAway ? (
+                  <div className="text-center text-[10px] text-slate-500 font-bold tracking-wider font-display">VS</div>
+
+                  {activeAway ? (
+                    <button
+                      onClick={() => handleSelectWinner(activeMatchConfig.id, activeAway.id)}
+                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-300 text-left ${
+                        activeWinnerId === activeAway.id
+                          ? 'bg-indigo-650/20 border-indigo-500 text-white font-bold scale-[1.01] shadow-glow-violet'
+                          : 'glass-card-hover border-white/5 bg-slate-950/20 hover:bg-slate-950/40 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center">
+                          <TeamFlag teamId={activeAway.id} fallbackEmoji={activeAway.flag} className="w-7 h-5" />
+                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold">{activeAway.name}</span>
+                          {isMatchUnlocked && (
+                            <span className="text-[9px] text-amber-400 font-mono font-bold">
+                              Tur Atlama İhtimali: %{relativeProbs.awayPct}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {activeWinnerId === activeAway.id && (
+                        <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 font-bold">
+                          Seçildi ✓
+                        </span>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="w-full flex items-center p-4 rounded-xl border border-dashed border-white/5 bg-slate-950/10 text-slate-500 text-xs italic">
+                      ⏳ {activeMatchConfig.awayLabel} bekleniyor...
+                    </div>
+                  )}
+                </div>
+
+                {/* GEÇİŞ VE GERİ DÜĞMELERİ */}
+                <div className="flex justify-between items-center pt-3 border-t border-white/5">
                   <button
-                    onClick={() => handleSelectWinner(activeMatchConfig.id, activeAway.id)}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-300 text-left ${
-                      activeWinnerId === activeAway.id
-                        ? 'bg-indigo-650/20 border-indigo-500 text-white font-bold scale-[1.01] shadow-glow-violet'
-                        : 'glass-card-hover border-white/5 bg-slate-950/20 hover:bg-slate-950/40 text-slate-300'
+                    onClick={() => {
+                      if (currentMatchIndex > 0) {
+                        setCurrentMatchIndex(currentMatchIndex - 1);
+                      } else {
+                        setAppState('THIRDS');
+                      }
+                    }}
+                    className="bg-slate-900/60 hover:bg-slate-800 border border-white/5 text-slate-300 font-bold px-4 py-2.5 rounded-xl text-xs hover:scale-[0.98] transition-all"
+                  >
+                    ← Önceki Maç
+                  </button>
+
+                  <button
+                    disabled={!activeWinnerId}
+                    onClick={() => {
+                      if (currentMatchIndex < 31) {
+                        setCurrentMatchIndex(currentMatchIndex + 1);
+                      } else {
+                        setAppState('SUMMARY');
+                      }
+                    }}
+                    className={`font-bold px-5 py-2.5 rounded-xl text-xs hover:scale-[1.02] transition-all font-display ${
+                      activeWinnerId
+                        ? 'bg-gradient-to-r from-violet-600 to-indigo-650 text-white shadow-md'
+                        : 'bg-slate-900/60 text-slate-650 border border-white/5 cursor-not-allowed'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] flex items-center">
-                        <TeamFlag teamId={activeAway.id} fallbackEmoji={activeAway.flag} className="w-7 h-5" />
-                      </span>
-                      <span className="text-sm font-semibold">{activeAway.name}</span>
-                    </div>
-                    {activeWinnerId === activeAway.id ? (
-                      <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 font-bold">
-                        Seçildi ✓
-                      </span>
-                    ) : (
-                      <span className="text-[9px] text-slate-500 font-mono">Kazanma: %{activeAway.probability}</span>
-                    )}
+                    Sonraki Maç →
                   </button>
-                ) : (
-                  <div className="w-full flex items-center p-4 rounded-xl border border-dashed border-white/5 bg-slate-950/10 text-slate-500 text-xs italic">
-                    ⏳ {activeMatchConfig.awayLabel} bekleniyor...
-                  </div>
-                )}
+                </div>
+
               </div>
-
-              {/* GEÇİŞ VE GERİ DÜĞMELERİ */}
-              <div className="flex justify-between items-center pt-3 border-t border-white/5">
-                <button
-                  onClick={() => {
-                    if (currentMatchIndex > 0) {
-                      setCurrentMatchIndex(currentMatchIndex - 1);
-                    } else {
-                      setAppState('THIRDS');
-                    }
-                  }}
-                  className="bg-slate-900/60 hover:bg-slate-800 border border-white/5 text-slate-300 font-bold px-4 py-2.5 rounded-xl text-xs hover:scale-[0.98] transition-all"
-                >
-                  ← Önceki Maç
-                </button>
-
-                <button
-                  disabled={!activeWinnerId}
-                  onClick={() => {
-                    if (currentMatchIndex < 31) {
-                      setCurrentMatchIndex(currentMatchIndex + 1);
-                    } else {
-                      setAppState('SUMMARY');
-                    }
-                  }}
-                  className={`font-bold px-5 py-2.5 rounded-xl text-xs hover:scale-[1.02] transition-all font-display ${
-                    activeWinnerId
-                      ? 'bg-gradient-to-r from-violet-600 to-indigo-650 text-white shadow-md'
-                      : 'bg-slate-900/60 text-slate-650 border border-white/5 cursor-not-allowed'
-                  }`}
-                >
-                  Sonraki Maç →
-                </button>
-              </div>
-
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          );
+        })()}
 
         {/* 6. SUMMARY STAGE (ÖZET VE FİNAL KİLİTLEME PAYLAŞIM EKRANI) */}
         {appState === 'SUMMARY' && (
