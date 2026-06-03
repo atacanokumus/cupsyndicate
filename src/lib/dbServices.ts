@@ -274,6 +274,7 @@ export const createSquad = async (
         companyId,
         name: squadName,
         memberUids: [uid],
+        creatorUid: uid,
         createdAt: serverTimestamp()
       });
 
@@ -467,5 +468,39 @@ export const fetchSquadMemberPredictions = async (
   } catch (error) {
     console.error("Klan tahmin istatistikleri çekilemedi:", error);
     return {};
+  }
+};
+
+/**
+ * 10. KADRO ADINI GÜNCELLEME
+ * Kadroyu kuran kurucu (creator) kadronun adını güncelleyebilir.
+ */
+export const renameSquad = async (
+  squadId: string,
+  newSquadName: string,
+  userUid: string
+): Promise<{ success: boolean; message: string }> => {
+  const squadRef = doc(db, 'squads', squadId);
+  try {
+    const squadSnap = await getDoc(squadRef);
+    if (!squadSnap.exists()) {
+      return { success: false, message: "Kadro bulunamadı." };
+    }
+    const squadData = squadSnap.data() as Squad;
+    
+    // Kurucu kontrolü (creatorUid eşleşmesi veya üye listesindeki ilk eleman olması)
+    const isCreator = squadData.creatorUid === userUid || (squadData.memberUids && squadData.memberUids[0] === userUid);
+    if (!isCreator) {
+      return { success: false, message: "Yalnızca kadroyu kuran kişi ismi değiştirebilir." };
+    }
+    
+    await updateDoc(squadRef, {
+      name: newSquadName
+    });
+    
+    return { success: true, message: "Kadro ismi başarıyla güncellendi!" };
+  } catch (error: any) {
+    console.error("Kadro ismi güncellenirken hata oluştu:", error);
+    return { success: false, message: error.message || "İsim güncellenemedi." };
   }
 };

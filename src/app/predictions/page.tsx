@@ -12,7 +12,8 @@ import {
   createSquad,
   getSquadDetails,
   fetchSquadMemberPredictions,
-  saveUserProfile
+  saveUserProfile,
+  renameSquad
 } from '../../lib/dbServices';
 import AdSenseWrapper from '../../components/AdSenseWrapper';
 import GPTWrapper from '../../components/GPTWrapper';
@@ -252,12 +253,15 @@ function RedesignedPredictionWizardContent() {
   const [squadMembers, setSquadMembers] = useState<any[]>([]);
   const [currentSquadId, setCurrentSquadId] = useState<string>('');
   const [showCreateSquad, setShowCreateSquad] = useState<boolean>(false);
+  const [isEditingSquadName, setIsEditingSquadName] = useState<boolean>(false);
+  const [editedSquadName, setEditedSquadName] = useState<string>('');
 
   const [isUserLoggedIn, setIsUserLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
   const [userUid, setUserUid] = useState<string>('');
   const [isPredictionsLocked, setIsPredictionsLocked] = useState<boolean>(false);
+  const isSquadCreator = !!(userSquad && (userSquad.creatorUid === userUid || (userSquad.memberUids && userSquad.memberUids[0] === userUid)));
 
   // Liderlik ve Read-Only Görüntüleme
   const [globalPlayers, setGlobalPlayers] = useState<any[]>([]);
@@ -933,6 +937,28 @@ function RedesignedPredictionWizardContent() {
     }
   };
 
+  const handleRenameSquad = async () => {
+    if (!editedSquadName.trim()) {
+      alert("Kadro adı boş bırakılamaz.");
+      return;
+    }
+    if (!userSquad) return;
+    try {
+      const res = await renameSquad(userSquad.squadId, editedSquadName.trim(), userUid);
+      alert(res.message);
+      if (res.success) {
+        setUserSquad({
+          ...userSquad,
+          name: editedSquadName.trim()
+        });
+        setIsEditingSquadName(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Kadro ismi değiştirilemedi.");
+    }
+  };
+
   const downloadImage = () => {
     if (!shareCardImage) return;
     const link = document.createElement('a');
@@ -1575,7 +1601,45 @@ function RedesignedPredictionWizardContent() {
                   <div className="flex justify-between items-center bg-violet-950/20 border border-violet-900/30 p-3 rounded-xl">
                     <div>
                       <span className="block text-[8px] text-violet-400 font-bold uppercase tracking-wider">AKTİF KADRONUZ</span>
-                      <span className="text-xs font-bold text-white">{userSquad.name}</span>
+                      {isEditingSquadName ? (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <input
+                            type="text"
+                            value={editedSquadName}
+                            onChange={(e) => setEditedSquadName(e.target.value)}
+                            className="bg-slate-900/90 border border-violet-500 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none max-w-[120px]"
+                            placeholder="Yeni Kadro Adı"
+                          />
+                          <button
+                            onClick={handleRenameSquad}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white p-1 rounded transition text-[9px] font-bold"
+                          >
+                            💾
+                          </button>
+                          <button
+                            onClick={() => setIsEditingSquadName(false)}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-1 rounded transition text-[9px] font-bold"
+                          >
+                            ❌
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs font-bold text-white">{userSquad.name}</span>
+                          {isSquadCreator && (
+                            <button
+                              onClick={() => {
+                                setEditedSquadName(userSquad.name);
+                                setIsEditingSquadName(true);
+                              }}
+                              className="text-slate-400 hover:text-white transition text-[10px]"
+                              title="Kadro Adını Düzenle"
+                            >
+                              ✏️
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className="block text-[8px] text-slate-500 font-bold uppercase">DAVET KODU</span>
@@ -1842,7 +1906,45 @@ function RedesignedPredictionWizardContent() {
                   <div className="flex justify-between items-center bg-violet-950/20 border border-violet-900/30 p-3 rounded-xl">
                     <div>
                       <span className="block text-[8px] text-violet-400 font-bold uppercase tracking-wider">AKTİF KADRONUZ</span>
-                      <span className="text-xs font-bold text-white">{userSquad.name}</span>
+                      {isEditingSquadName ? (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <input
+                            type="text"
+                            value={editedSquadName}
+                            onChange={(e) => setEditedSquadName(e.target.value)}
+                            className="bg-slate-900/90 border border-violet-500 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none max-w-[120px]"
+                            placeholder="Yeni Kadro Adı"
+                          />
+                          <button
+                            onClick={handleRenameSquad}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white p-1 rounded transition text-[9px] font-bold"
+                          >
+                            💾
+                          </button>
+                          <button
+                            onClick={() => setIsEditingSquadName(false)}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-1 rounded transition text-[9px] font-bold"
+                          >
+                            ❌
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs font-bold text-white">{userSquad.name}</span>
+                          {isSquadCreator && (
+                            <button
+                              onClick={() => {
+                                setEditedSquadName(userSquad.name);
+                                setIsEditingSquadName(true);
+                              }}
+                              className="text-slate-400 hover:text-white transition text-[10px]"
+                              title="Kadro Adını Düzenle"
+                            >
+                              ✏️
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className="block text-[8px] text-slate-500 font-bold uppercase">DAVET KODU</span>
