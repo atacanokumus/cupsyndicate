@@ -11,7 +11,8 @@ import {
   joinSquadWithTransaction,
   createSquad,
   getSquadDetails,
-  fetchSquadMemberPredictions
+  fetchSquadMemberPredictions,
+  saveUserProfile
 } from '../../lib/dbServices';
 import AdSenseWrapper from '../../components/AdSenseWrapper';
 import GPTWrapper from '../../components/GPTWrapper';
@@ -330,6 +331,21 @@ function RedesignedPredictionWizardContent() {
         setUserName(user.displayName || 'Kullanıcı');
         setUserEmail(user.email || '');
         setUserUid(user.uid);
+
+        // Firestore'a kullanıcı profilini kaydet/güncelle ve klan/squad bilgilerini yükle
+        saveUserProfile(user.uid, user.displayName || 'Kullanıcı', user.email || '', user.photoURL || null)
+          .then((profile) => {
+            if (profile && profile.squadId) {
+              setCurrentSquadId(profile.squadId);
+              getSquadDetails(profile.squadId).then((details) => {
+                if (details.squad) {
+                  setUserSquad(details.squad);
+                  setSquadMembers(details.members);
+                }
+              }).catch(err => console.error("Klan detayları yüklenemedi:", err));
+            }
+          })
+          .catch(err => console.error("Kullanıcı profili veritabanına kaydedilemedi:", err));
 
         // Firestore'dan kullanıcının önceki tahminlerini yükleme
         getUserPredictions(user.uid).then((data) => {
@@ -763,7 +779,7 @@ function RedesignedPredictionWizardContent() {
   };
 
   const handleLockPredictions = () => {
-    const dummyUid = isUserLoggedIn ? (userName.includes('Google') ? 'dummy_google_123' : 'dummy_apple_123') : 'guest_user';
+    const activeUid = (isUserLoggedIn && userUid) ? userUid : 'guest_user';
     
     // Firestore şemasına uygun veri kümesini derleme
     const dbGroupData: any = {
@@ -791,7 +807,7 @@ function RedesignedPredictionWizardContent() {
       };
     });
 
-    saveUserPredictions(dummyUid, dbGroupData, dbKnockoutData).then(() => {
+    saveUserPredictions(activeUid, dbGroupData, dbKnockoutData).then(() => {
       setIsPredictionsLocked(true);
       alert('Tebrikler! 2026 Dünya Kupası tahminleriniz kilitlendi. Sosyal liglerde sıralamanızı takip edebilirsiniz.');
       setAppState('SUMMARY');
@@ -908,6 +924,8 @@ function RedesignedPredictionWizardContent() {
           setSquadMembers(details.members);
         }
         setShowCreateSquad(false);
+        setNewCompanyName('');
+        setNewSquadName('');
       }
     } catch (err) {
       console.error(err);
@@ -1653,7 +1671,7 @@ function RedesignedPredictionWizardContent() {
                       </div>
 
                       <div>
-                        <label className="block text-[8px] text-slate-400 font-bold uppercase mb-1">Takım Adı</label>
+                        <label className="block text-[8px] text-slate-400 font-bold uppercase mb-1">Kadro / Takım Adı</label>
                         <input
                           type="text"
                           placeholder="Örn: A Takımı"
@@ -1665,7 +1683,11 @@ function RedesignedPredictionWizardContent() {
 
                       <div className="flex gap-2 pt-1.5">
                         <button
-                          onClick={() => setShowCreateSquad(false)}
+                          onClick={() => {
+                            setShowCreateSquad(false);
+                            setNewCompanyName('');
+                            setNewSquadName('');
+                          }}
                           className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-300 text-[10px] font-bold py-2 rounded-xl transition"
                         >
                           İptal
@@ -1908,6 +1930,17 @@ function RedesignedPredictionWizardContent() {
                         <label className="block text-[8px] text-slate-400 font-bold uppercase mb-1">Klan Adı</label>
                         <input
                           type="text"
+                          placeholder="Örn: Bordo Bereliler"
+                          value={newCompanyName}
+                          onChange={(e) => setNewCompanyName(e.target.value)}
+                          className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-violet-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[8px] text-slate-400 font-bold uppercase mb-1">Kadro / Takım Adı</label>
+                        <input
+                          type="text"
                           placeholder="Örn: A Takımı"
                           value={newSquadName}
                           onChange={(e) => setNewSquadName(e.target.value)}
@@ -1917,7 +1950,11 @@ function RedesignedPredictionWizardContent() {
 
                       <div className="flex gap-2 pt-1.5">
                         <button
-                          onClick={() => setShowCreateSquad(false)}
+                          onClick={() => {
+                            setShowCreateSquad(false);
+                            setNewCompanyName('');
+                            setNewSquadName('');
+                          }}
                           className="flex-1 bg-slate-900 hover:bg-slate-800 text-slate-350 text-[10px] font-bold py-2 rounded-xl transition"
                         >
                           İptal

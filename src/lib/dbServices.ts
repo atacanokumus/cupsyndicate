@@ -73,6 +73,51 @@ export const getUserPredictions = async (uid: string): Promise<any | null> => {
 };
 
 /**
+ * 2.5 KULLANICI PROFİLİNİ KAYDETME VEYA GÜNCELLEME
+ * Kullanıcı giriş yaptığında profil bilgilerini Firestore'a yazar.
+ */
+export const saveUserProfile = async (
+  uid: string,
+  username: string,
+  email: string,
+  avatarUrl: string | null
+): Promise<any> => {
+  const userRef = doc(db, 'users', uid);
+  try {
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const currentData = snap.data();
+      const updatedFields = {
+        username: currentData.username || username,
+        email: currentData.email || email,
+        avatarUrl: currentData.avatarUrl || avatarUrl,
+        updatedAt: serverTimestamp()
+      };
+      await updateDoc(userRef, updatedFields);
+      return { ...currentData, ...updatedFields };
+    } else {
+      const newProfile = {
+        uid,
+        username,
+        email,
+        avatarUrl,
+        companyId: null,
+        squadId: null,
+        totalPoints: 0,
+        isPremium: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+      await setDoc(userRef, newProfile);
+      return newProfile;
+    }
+  } catch (error) {
+    console.error("Kullanıcı profili kaydedilemedi:", error);
+    throw error;
+  }
+};
+
+/**
  * 3. GLOBAL LİDERLİK TABLOSUNU ÇEKME
  * totalPoints değerine göre kullanıcıları azalan sırada listeler.
  */
