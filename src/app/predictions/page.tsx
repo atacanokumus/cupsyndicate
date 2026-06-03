@@ -19,6 +19,10 @@ import AdSenseWrapper from '../../components/AdSenseWrapper';
 import GPTWrapper from '../../components/GPTWrapper';
 import { generateBracketCard } from '../../lib/canvasHelper';
 import { fetchTeamAiAnalysis } from '../../lib/geminiService';
+import Link from 'next/link';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
+import { BLOG_POSTS } from '../../lib/blogData';
 
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, signInWithGoogle, signInWithApple, logOut } from '../../lib/firebaseConfig';
@@ -986,44 +990,49 @@ function RedesignedPredictionWizardContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-zinc-950 text-slate-100 font-sans pb-16 selection:bg-violet-600 selection:text-white">
-      {/* HEADER BANNER */}
-      <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60 px-4 py-3 shadow-lg">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🏆</span>
-            <div>
-              <h1 className="text-xl font-bold tracking-wider bg-gradient-to-r from-violet-400 via-pink-400 to-amber-300 bg-clip-text text-transparent">
-                KupaTahmini.com
-              </h1>
-              <p className="text-[10px] text-slate-400 font-medium">WORLD CUP 2026 PREDICTOR</p>
+      {/* Global Navigation Header (only on non-gameplay pages) */}
+      {(appState === 'LANDING' || appState === 'PROFILE' || appState === 'LEADERBOARDS') ? (
+        <Header />
+      ) : (
+        /* Game Screen Banner Header */
+        <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60 px-4 py-3 shadow-lg animate-fadeIn">
+          <div className="max-w-6xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🏆</span>
+              <div>
+                <h1 className="text-xl font-bold tracking-wider bg-gradient-to-r from-violet-400 via-pink-400 to-amber-300 bg-clip-text text-transparent">
+                  KupaTahmini.com
+                </h1>
+                <p className="text-[10px] text-slate-400 font-medium">WORLD CUP 2026 PREDICTOR</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] px-2.5 py-1 rounded-full font-bold bg-gradient-to-r from-violet-600 to-indigo-650 text-white shadow-md flex items-center gap-1">
+                ⚡ Canlı Simülasyon
+              </span>
+
+              {isUserLoggedIn && (
+                <>
+                  <button
+                    onClick={() => setAppState('PROFILE')}
+                    className="bg-violet-950/60 border border-violet-800/40 text-violet-300 px-3 py-1.5 rounded-md text-xs hover:bg-violet-900/60 hover:text-white transition flex items-center gap-1 font-bold"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    Profilim
+                  </button>
+                  <button
+                    onClick={handleLogoutClick}
+                    className="bg-rose-950/60 border border-rose-800/40 text-rose-300 px-3 py-1.5 rounded-md text-xs hover:bg-rose-900/60 transition"
+                  >
+                    Çıkış
+                  </button>
+                </>
+              )}
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] px-2.5 py-1 rounded-full font-bold bg-gradient-to-r from-violet-600 to-indigo-650 text-white shadow-md flex items-center gap-1">
-              ⚡ Canlı Simülasyon
-            </span>
-
-            {isUserLoggedIn && (
-              <>
-                <button
-                  onClick={() => setAppState('PROFILE')}
-                  className="bg-violet-950/60 border border-violet-800/40 text-violet-300 px-3 py-1.5 rounded-md text-xs hover:bg-violet-900/60 hover:text-white transition flex items-center gap-1 font-bold"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  Profilim
-                </button>
-                <button
-                  onClick={handleLogoutClick}
-                  className="bg-rose-950/60 border border-rose-800/40 text-rose-300 px-3 py-1.5 rounded-md text-xs hover:bg-rose-900/60 transition"
-                >
-                  Çıkış
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* ANA WIZARD ALANI */}
       <main className="max-w-xl mx-auto px-4 mt-12 relative">
@@ -1031,75 +1040,164 @@ function RedesignedPredictionWizardContent() {
 
         {/* 1. LANDING STAGE (AÇILIŞ GİRİŞ EKRANI) */}
         {appState === 'LANDING' && (
-          <motion.div 
-            key="landing"
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="glass-card rounded-3xl p-8 shadow-glow-violet border border-white/10 text-center space-y-6 max-w-md mx-auto"
-          >
-            <div className="space-y-2 flex flex-col items-center">
-              <Globe2 className="w-16 h-16 text-violet-400 animate-pulse drop-shadow-[0_0_15px_rgba(124,58,237,0.4)]" />
-              <h2 className="text-3xl font-black tracking-tight text-white font-display bg-gradient-to-r from-violet-300 via-pink-300 to-amber-200 bg-clip-text text-transparent glow-text-violet">
-                KupaTahmini.com
-              </h2>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-                Dünya Kupası 2026 turnuva ağacını grup aşamasından başlayarak tahmin et, rekabetçi PvP liglerinde zirveye oyna!
-              </p>
-            </div>
-
-            {/* DAVET KODU ALANI */}
-            <div className="bg-slate-950/40 border border-white/5 p-4 rounded-2xl space-y-2">
-              <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider text-left">
-                Varsa Kadro Davet Kodunuz
-              </label>
-              <input
-                type="text"
-                placeholder="Örn: TRY-5A2"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2.5 text-xs font-mono text-center tracking-widest text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
-              />
-            </div>
-
-            <div className="space-y-3">
-              <button
-                onClick={() => setAppState('GROUPS')}
-                className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-650 hover:from-violet-500 hover:to-indigo-550 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-violet-900/20 hover:shadow-violet-900/30 hover:scale-[1.01] transition-all text-xs tracking-wider uppercase font-display"
-              >
-                Tahmin Yapmaya Başla 🚀 (Üye Olmadan)
-              </button>
-
-              <div className="flex items-center gap-3 my-2">
-                <hr className="flex-1 border-white/5" />
-                <span className="text-[9px] text-slate-500 font-bold tracking-wider">VEYA</span>
-                <hr className="flex-1 border-white/5" />
+          <div className="space-y-8 pb-24">
+            <motion.div 
+              key="landing"
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="glass-card rounded-3xl p-8 shadow-glow-violet border border-white/10 text-center space-y-6 max-w-md mx-auto"
+            >
+              <div className="space-y-2 flex flex-col items-center">
+                <Globe2 className="w-16 h-16 text-violet-400 animate-pulse drop-shadow-[0_0_15px_rgba(124,58,237,0.4)]" />
+                <h2 className="text-3xl font-black tracking-tight text-white font-display bg-gradient-to-r from-violet-300 via-pink-300 to-amber-200 bg-clip-text text-transparent glow-text-violet">
+                  KupaTahmini.com
+                </h2>
+                <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                  Dünya Kupası 2026 turnuva ağacını grup aşamasından başlayarak tahmin et, rekabetçi PvP liglerinde zirveye oyna!
+                </p>
               </div>
 
-              {isUserLoggedIn ? (
-                <button
-                  onClick={() => setAppState('PROFILE')}
-                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg hover:scale-[1.01] transition-all text-xs tracking-wider uppercase font-display"
-                >
-                  Profilime Git 🧑‍💻
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleLogin('google')}
-                  className="w-full bg-white/5 hover:bg-white/10 text-white py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-white/15 hover:scale-[1.01] transition-all uppercase tracking-wider font-display"
-                >
-                  🌐 Google ile Giriş Yap / Üye Ol
-                </button>
-              )}
-            </div>
+              {/* DAVET KODU ALANI */}
+              <div className="bg-slate-950/40 border border-white/5 p-4 rounded-2xl space-y-2">
+                <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider text-left">
+                  Varsa Kadro Davet Kodunuz
+                </label>
+                <input
+                  type="text"
+                  placeholder="Örn: TRY-5A2"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2.5 text-xs font-mono text-center tracking-widest text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
+                />
+              </div>
 
-            {inviteCode && (
-              <p className="text-[10px] text-violet-400 font-medium">
-                ✨ Davet kodu girildi: <strong className="text-white">{inviteCode}</strong>. Kayıt olduktan sonra otomatik olarak bu kadroya ekleneceksiniz.
-              </p>
-            )}
-          </motion.div>
+              <div className="space-y-3">
+                <button
+                  onClick={() => setAppState('GROUPS')}
+                  className="w-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-650 hover:from-violet-500 hover:to-indigo-550 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-violet-900/20 hover:shadow-violet-900/30 hover:scale-[1.01] transition-all text-xs tracking-wider uppercase font-display"
+                >
+                  Tahmin Yapmaya Başla 🚀 (Üye Olmadan)
+                </button>
+
+                <div className="flex items-center gap-3 my-2">
+                  <hr className="flex-1 border-white/5" />
+                  <span className="text-[9px] text-slate-500 font-bold tracking-wider">VEYA</span>
+                  <hr className="flex-1 border-white/5" />
+                </div>
+
+                {isUserLoggedIn ? (
+                  <button
+                    onClick={() => setAppState('PROFILE')}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg hover:scale-[1.01] transition-all text-xs tracking-wider uppercase font-display"
+                  >
+                    Profilime Git 🧑‍💻
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleLogin('google')}
+                    className="w-full bg-white/5 hover:bg-white/10 text-white py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-white/15 hover:scale-[1.01] transition-all uppercase tracking-wider font-display"
+                  >
+                    🌐 Google ile Giriş Yap / Üye Ol
+                  </button>
+                )}
+              </div>
+
+              {inviteCode && (
+                <p className="text-[10px] text-violet-400 font-medium">
+                  ✨ Davet kodu girildi: <strong className="text-white">{inviteCode}</strong>. Kayıt olduktan sonra otomatik olarak bu kadroya ekleneceksiniz.
+                </p>
+              )}
+            </motion.div>
+
+            {/* Neden KupaTahmini.com Features */}
+            <section className="glass-card rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6 max-w-md mx-auto">
+              <h3 className="text-sm font-bold text-white tracking-wider uppercase font-display border-b border-white/5 pb-2 text-center">
+                🏆 Neden KupaTahmini.com?
+              </h3>
+              <div className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="text-violet-400 font-bold text-xs">1.</div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-white text-left">Adım Adım Olasılık Analizi</h4>
+                    <p className="text-[11px] text-slate-400 leading-relaxed text-left">
+                      Her grubun yanında yer alan matematiksel olasılıkları inceleyerek rasyonel kararlar verin.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="text-pink-400 font-bold text-xs">2.</div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-white text-left">Kendi PvP Kadronuzu Kurun</h4>
+                    <p className="text-[11px] text-slate-400 leading-relaxed text-left">
+                      Arkadaşlarınızı davet edin ve özel kadro (klan) liderlik tablolarında rekabet edin.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <div className="text-amber-400 font-bold text-xs">3.</div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-white text-left">Yapay Zeka (Gemini) Desteği</h4>
+                    <p className="text-[11px] text-slate-400 leading-relaxed text-left">
+                      Kararsız kaldığınız takımlarda 'AI' butonuna tıklayarak rasyonel gücü yanınıza alın.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Son Analizler Blog Previews */}
+            <section className="glass-card rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6 max-w-md mx-auto">
+              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                <h3 className="text-xs font-bold text-white tracking-wider uppercase font-display">
+                  📰 Son Analizler
+                </h3>
+                <Link href="/blog" className="text-[10px] text-violet-400 hover:text-violet-300 font-bold">
+                  Tümünü Gör
+                </Link>
+              </div>
+              <div className="space-y-4 text-left">
+                {BLOG_POSTS.slice(0, 2).map((post) => (
+                  <div key={post.slug} className="space-y-1">
+                    <Link href={`/blog/${post.slug}`} className="text-xs font-bold text-slate-200 hover:text-violet-400 transition line-clamp-1">
+                      {post.title}
+                    </Link>
+                    <p className="text-[10px] text-slate-400 line-clamp-2">
+                      {post.excerpt}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* FAQ Section */}
+            <section className="glass-card rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6 max-w-md mx-auto text-left">
+              <h3 className="text-sm font-bold text-white tracking-wider uppercase font-display border-b border-white/5 pb-2 text-center">
+                💬 Sıkça Sorulan Sorular
+              </h3>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-200">KupaTahmini.com ücretli mi?</h4>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Hayır, sitemiz tamamen ücretsizdir. 2026 Dünya Kupası heyecanını sosyal klanlarla birleştiren ücretsiz bir tahmin oyunudur.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-200">Puanlama sistemi nasıl çalışır?</h4>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Grup aşaması liderlerini ve elemelerden tur atlayan takımları doğru tahmin ettikçe puan kazanır ve liginizde yükselirsiniz.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-200">Kadro davet kodunu nasıl kullanırım?</h4>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Arkadaşınızdan aldığınız davet kodunu giriş ekranındaki kutuya yazarak veya davet linkine doğrudan tıklayarak kadroya katılabilirsiniz.
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
         )}
 
         {/* 2. GROUPS STAGE (ADIM ADIM GRUP SEÇİMLERİ) */}
@@ -2398,6 +2496,11 @@ function RedesignedPredictionWizardContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Global Footer (only on landing, profile, or leaderboard page views) */}
+      {(appState === 'LANDING' || appState === 'PROFILE' || appState === 'LEADERBOARDS') && (
+        <Footer />
       )}
 
       {/* STICKY AD BANNER SLOT A */}
