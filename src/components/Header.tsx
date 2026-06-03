@@ -1,16 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Trophy, Menu, X, Globe2 } from 'lucide-react';
+import { Trophy, Menu, X, User as UserIcon, LogOut } from 'lucide-react';
+import { auth, logOut } from '../lib/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export default function Header() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logOut();
+      window.location.href = '/?tab=landing';
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   const navLinks = [
-    { name: 'Ana Sayfa', href: '/' },
+    { name: 'Ana Sayfa', href: '/?tab=landing' },
     { name: 'Blog', href: '/blog' },
     { name: 'Hakkımızda', href: '/about' },
     { name: 'İletişim', href: '/contact' },
@@ -23,8 +42,8 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="bg-gradient-to-br from-violet-500 to-indigo-600 p-1.5 rounded-lg shadow-glow-violet group-hover:scale-105 transition duration-300">
+            <Link href="/?tab=landing" className="flex items-center gap-2 group">
+              <div className="bg-gradient-to-br from-violet-500 to-indigo-650 p-1.5 rounded-lg shadow-glow-violet group-hover:scale-105 transition duration-300">
                 <Trophy className="w-5 h-5 text-white" />
               </div>
               <span className="text-lg font-black tracking-tight text-white font-display bg-gradient-to-r from-violet-300 via-pink-300 to-amber-200 bg-clip-text text-transparent glow-text-violet">
@@ -36,7 +55,10 @@ export default function Header() {
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => {
-              const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
+              const isActive = pathname === '/' 
+                ? (link.href === '/?tab=landing' && pathname === '/')
+                : (link.href !== '/?tab=landing' && pathname?.startsWith(link.href));
+
               return (
                 <Link
                   key={link.href}
@@ -49,12 +71,37 @@ export default function Header() {
                 </Link>
               );
             })}
-            <Link
-              href="/"
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-md hover:scale-105 transition-all duration-300 font-display"
-            >
-              Tahmin Sihirbazı 🏆
-            </Link>
+
+            {/* Profile Link if Logged In */}
+            {user && (
+              <Link
+                href="/?tab=profile"
+                className={`text-xs font-bold uppercase tracking-wider transition duration-300 hover:text-white flex items-center gap-1.5 ${
+                  pathname === '/' && window.location.search.includes('tab=profile') ? 'text-violet-400 border-b-2 border-violet-500 pb-1' : 'text-slate-400'
+                }`}
+              >
+                <UserIcon className="w-3.5 h-3.5" />
+                <span>Profilim</span>
+              </Link>
+            )}
+
+            {/* Logout Button if Logged In */}
+            {user ? (
+              <button
+                onClick={handleLogout}
+                className="bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 text-rose-300 text-[10px] font-black uppercase tracking-wider px-3.5 py-2 rounded-lg transition-all flex items-center gap-1"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Çıkış</span>
+              </button>
+            ) : (
+              <Link
+                href="/?tab=landing"
+                className="bg-gradient-to-r from-violet-600 to-indigo-650 hover:from-violet-500 hover:to-indigo-550 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-md hover:scale-105 transition-all duration-300 font-display"
+              >
+                Tahmin Sihirbazı 🏆
+              </Link>
+            )}
           </nav>
 
           {/* Mobile Menu Button */}
@@ -73,7 +120,10 @@ export default function Header() {
       {isOpen && (
         <div className="md:hidden bg-slate-950 border-b border-white/10 px-2 pt-2 pb-4 space-y-1 shadow-2xl animate-fadeIn">
           {navLinks.map((link) => {
-            const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
+            const isActive = pathname === '/' 
+              ? (link.href === '/?tab=landing' && pathname === '/')
+              : (link.href !== '/?tab=landing' && pathname?.startsWith(link.href));
+
             return (
               <Link
                 key={link.href}
@@ -87,14 +137,40 @@ export default function Header() {
               </Link>
             );
           })}
-          <div className="pt-2 px-3">
+
+          {/* Mobile Profile Link */}
+          {user && (
             <Link
-              href="/"
+              href="/?tab=profile"
               onClick={() => setIsOpen(false)}
-              className="block w-full text-center bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-xs font-black uppercase tracking-wider py-3 rounded-lg shadow-md font-display"
+              className="block px-3 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider text-slate-400 hover:bg-slate-900 hover:text-white flex items-center gap-2"
             >
-              Tahmin Sihirbazı 🏆
+              <UserIcon className="w-4 h-4 text-violet-400" />
+              <span>Profilim</span>
             </Link>
+          )}
+
+          <div className="pt-2 px-3">
+            {user ? (
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  handleLogout();
+                }}
+                className="w-full text-center bg-rose-950 hover:bg-rose-900 text-rose-200 text-xs font-black uppercase tracking-wider py-3 rounded-lg flex items-center justify-center gap-1.5 border border-rose-800"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Çıkış Yap</span>
+              </button>
+            ) : (
+              <Link
+                href="/?tab=landing"
+                onClick={() => setIsOpen(false)}
+                className="block w-full text-center bg-gradient-to-r from-violet-600 to-indigo-650 text-white text-xs font-black uppercase tracking-wider py-3 rounded-lg shadow-md font-display"
+              >
+                Tahmin Sihirbazı 🏆
+              </Link>
+            )}
           </div>
         </div>
       )}

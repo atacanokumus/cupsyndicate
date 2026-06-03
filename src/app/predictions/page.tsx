@@ -242,6 +242,17 @@ function RedesignedPredictionWizardContent() {
   // --- DURUM YÖNETİMİ ---
   const [appState, setAppState] = useState<AppState>('LANDING');
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'landing') {
+      setAppState('LANDING');
+    } else if (tab === 'profile') {
+      setAppState('PROFILE');
+    } else if (tab === 'leaderboards') {
+      setAppState('LEADERBOARDS');
+    }
+  }, [searchParams]);
   
   // Üyelik ve Davet Kodları
   const [inviteCode, setInviteCode] = useState<string>('');
@@ -859,6 +870,7 @@ function RedesignedPredictionWizardContent() {
   }, [showShareModal, isWatermarkRemoved, userSquad, userName]);
 
   const handleOpenLeaderboards = async () => {
+    window.history.pushState(null, '', '/?tab=leaderboards');
     setAppState('LEADERBOARDS');
     try {
       const players = await fetchGlobalLeaderboard(50);
@@ -1015,7 +1027,10 @@ function RedesignedPredictionWizardContent() {
               {isUserLoggedIn && (
                 <>
                   <button
-                    onClick={() => setAppState('PROFILE')}
+                    onClick={() => {
+                      window.history.pushState(null, '', '/?tab=profile');
+                      setAppState('PROFILE');
+                    }}
                     className="bg-violet-950/60 border border-violet-800/40 text-violet-300 px-3 py-1.5 rounded-md text-xs hover:bg-violet-900/60 hover:text-white transition flex items-center gap-1 font-bold"
                   >
                     <User className="w-3.5 h-3.5" />
@@ -1089,7 +1104,10 @@ function RedesignedPredictionWizardContent() {
 
                 {isUserLoggedIn ? (
                   <button
-                    onClick={() => setAppState('PROFILE')}
+                    onClick={() => {
+                      window.history.pushState(null, '', '/?tab=profile');
+                      setAppState('PROFILE');
+                    }}
                     className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg hover:scale-[1.01] transition-all text-xs tracking-wider uppercase font-display"
                   >
                     Profilime Git 🧑‍💻
