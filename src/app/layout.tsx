@@ -29,6 +29,11 @@ export default function RootLayout({
   return (
     <html lang="tr" className={`${inter.variable} ${outfit.variable} font-sans`}>
       <head>
+        {/* Google AdSense Meta Tag for Verification */}
+        <meta
+          name="google-adsense-account"
+          content={process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || 'ca-pub-7838551368632112'}
+        />
         {/* Google AdSense Script */}
         <script
           async
