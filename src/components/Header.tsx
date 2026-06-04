@@ -2,14 +2,19 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Trophy, Menu, X, User as UserIcon, LogOut } from 'lucide-react';
 import { auth, logOut } from '../lib/firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
 
-function HeaderContent() {
+interface HeaderProps {
+  onTabChange?: (tab: 'landing' | 'profile' | 'leaderboards') => void;
+}
+
+function HeaderContent({ onTabChange }: HeaderProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const tab = searchParams.get('tab');
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -30,12 +35,24 @@ function HeaderContent() {
     }
   };
 
+  const handleQueryParamLink = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    href: string,
+    tabName: 'landing' | 'profile' | 'leaderboards'
+  ) => {
+    e.preventDefault();
+    router.push(href);
+    if (onTabChange) {
+      onTabChange(tabName);
+    }
+  };
+
   const navLinks = [
-    { name: 'Ana Sayfa', href: '/?tab=landing' },
-    { name: 'Blog', href: '/blog' },
-    { name: 'Hakkımızda', href: '/about' },
-    { name: 'İletişim', href: '/contact' },
-    { name: 'Gizlilik', href: '/privacy' },
+    { name: 'Ana Sayfa', href: '/?tab=landing', tab: 'landing' as const },
+    { name: 'Blog', href: '/blog', tab: null },
+    { name: 'Hakkımızda', href: '/about', tab: null },
+    { name: 'İletişim', href: '/contact', tab: null },
+    { name: 'Gizlilik', href: '/privacy', tab: null },
   ];
 
   return (
@@ -44,7 +61,11 @@ function HeaderContent() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/?tab=landing" className="flex items-center gap-2 group">
+            <Link
+              href="/?tab=landing"
+              onClick={(e) => handleQueryParamLink(e, '/?tab=landing', 'landing')}
+              className="flex items-center gap-2 group"
+            >
               <div className="bg-gradient-to-br from-violet-500 to-indigo-650 p-1.5 rounded-lg shadow-glow-violet group-hover:scale-105 transition duration-300">
                 <Trophy className="w-5 h-5 text-white" />
               </div>
@@ -65,6 +86,11 @@ function HeaderContent() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  onClick={(e) => {
+                    if (link.tab) {
+                      handleQueryParamLink(e, link.href, link.tab);
+                    }
+                  }}
                   className={`text-xs font-bold uppercase tracking-wider transition duration-300 hover:text-white ${
                     isActive ? 'text-violet-400 border-b-2 border-violet-500 pb-1' : 'text-slate-400'
                   }`}
@@ -78,6 +104,7 @@ function HeaderContent() {
             {user && (
               <Link
                 href="/?tab=profile"
+                onClick={(e) => handleQueryParamLink(e, '/?tab=profile', 'profile')}
                 className={`text-xs font-bold uppercase tracking-wider transition duration-300 hover:text-white flex items-center gap-1.5 ${
                   pathname === '/' && tab === 'profile' ? 'text-violet-400 border-b-2 border-violet-500 pb-1' : 'text-slate-400'
                 }`}
@@ -99,6 +126,7 @@ function HeaderContent() {
             ) : (
               <Link
                 href="/?tab=landing"
+                onClick={(e) => handleQueryParamLink(e, '/?tab=landing', 'landing')}
                 className="bg-gradient-to-r from-violet-600 to-indigo-650 hover:from-violet-500 hover:to-indigo-550 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-lg shadow-md hover:scale-105 transition-all duration-300 font-display"
               >
                 Tahmin Sihirbazı 🏆
@@ -130,7 +158,12 @@ function HeaderContent() {
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={() => setIsOpen(false)}
+                onClick={(e) => {
+                  setIsOpen(false);
+                  if (link.tab) {
+                    handleQueryParamLink(e, link.href, link.tab);
+                  }
+                }}
                 className={`block px-3 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider transition ${
                   isActive ? 'bg-violet-950/40 text-violet-400 border-l-4 border-violet-500' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
                 }`}
@@ -144,7 +177,10 @@ function HeaderContent() {
           {user && (
             <Link
               href="/?tab=profile"
-              onClick={() => setIsOpen(false)}
+              onClick={(e) => {
+                setIsOpen(false);
+                handleQueryParamLink(e, '/?tab=profile', 'profile');
+              }}
               className={`block px-3 py-2.5 rounded-lg text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${
                 pathname === '/' && tab === 'profile' ? 'bg-violet-950/40 text-violet-400 border-l-4 border-violet-500' : 'text-slate-400 hover:bg-slate-900 hover:text-white'
               }`}
@@ -169,7 +205,10 @@ function HeaderContent() {
             ) : (
               <Link
                 href="/?tab=landing"
-                onClick={() => setIsOpen(false)}
+                onClick={(e) => {
+                  setIsOpen(false);
+                  handleQueryParamLink(e, '/?tab=landing', 'landing');
+                }}
                 className="block w-full text-center bg-gradient-to-r from-violet-600 to-indigo-650 text-white text-xs font-black uppercase tracking-wider py-3 rounded-lg shadow-md font-display"
               >
                 Tahmin Sihirbazı 🏆
@@ -182,7 +221,7 @@ function HeaderContent() {
   );
 }
 
-export default function Header() {
+export default function Header({ onTabChange }: HeaderProps) {
   return (
     <Suspense fallback={
       <header className="sticky top-0 z-50 w-full bg-slate-950/75 backdrop-blur-md border-b border-white/10 shadow-lg">
@@ -202,7 +241,7 @@ export default function Header() {
         </div>
       </header>
     }>
-      <HeaderContent />
+      <HeaderContent onTabChange={onTabChange} />
     </Suspense>
   );
 }

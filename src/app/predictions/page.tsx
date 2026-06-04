@@ -1005,7 +1005,11 @@ function RedesignedPredictionWizardContent() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-zinc-950 text-slate-100 font-sans pb-16 selection:bg-violet-600 selection:text-white">
       {/* Global Navigation Header (only on non-gameplay pages) */}
       {(appState === 'LANDING' || appState === 'PROFILE' || appState === 'LEADERBOARDS') ? (
-        <Header />
+        <Header onTabChange={(newTab) => {
+          if (newTab === 'profile') setAppState('PROFILE');
+          else if (newTab === 'leaderboards') setAppState('LEADERBOARDS');
+          else setAppState('LANDING');
+        }} />
       ) : (
         /* Game Screen Banner Header */
         <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60 px-4 py-3 shadow-lg animate-fadeIn">
