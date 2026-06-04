@@ -1060,15 +1060,15 @@ function RedesignedPredictionWizardContent() {
 
         {/* 1. LANDING STAGE (AÇILIŞ GİRİŞ EKRANI) */}
         {appState === 'LANDING' && (
-          <div className="space-y-8 pb-24">
-            <motion.div 
-              key="landing"
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="glass-card rounded-3xl p-8 shadow-glow-violet border border-white/10 text-center space-y-6 max-w-md mx-auto"
-            >
+          <motion.div
+            key="landing_stage"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="space-y-8 pb-24"
+          >
+            <div className="glass-card rounded-3xl p-8 shadow-glow-violet border border-white/10 text-center space-y-6 max-w-md mx-auto">
               <div className="space-y-2 flex flex-col items-center">
                 <Globe2 className="w-16 h-16 text-violet-400 animate-pulse drop-shadow-[0_0_15px_rgba(124,58,237,0.4)]" />
                 <h2 className="text-3xl font-black tracking-tight text-white font-display bg-gradient-to-r from-violet-300 via-pink-300 to-amber-200 bg-clip-text text-transparent glow-text-violet">
@@ -1132,7 +1132,7 @@ function RedesignedPredictionWizardContent() {
                   ✨ Davet kodu girildi: <strong className="text-white">{inviteCode}</strong>. Kayıt olduktan sonra otomatik olarak bu kadroya ekleneceksiniz.
                 </p>
               )}
-            </motion.div>
+            </div>
 
             {/* Neden KupaTahmini.com Features */}
             <section className="glass-card rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6 max-w-md mx-auto">
@@ -1220,7 +1220,7 @@ function RedesignedPredictionWizardContent() {
                 </div>
               </div>
             </section>
-          </div>
+          </motion.div>
         )}
 
         {/* 2. GROUPS STAGE (ADIM ADIM GRUP SEÇİMLERİ) */}
