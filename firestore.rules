@@ -41,7 +41,7 @@ service cloud.firestore {
 
     // 4. SQUAD'LAR KOLEKSİYONU (Kadro Sınırı Kuralları)
     match /squads/{squadId} {
-      allow read: if isLoggedIn();
+      allow read: if true; // Davet linkleri public olduğu için squad bilgileri okunabilmeli
       
       // Bir squad'ın üye listesi (memberUids) asla 20'den fazla olamaz
       allow create, update: if isLoggedIn() 
